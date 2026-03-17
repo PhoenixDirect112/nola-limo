@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Book your private chauffeur service in New Orleans. Select your date, time, and trip details." />
+  <meta name="robots" content="noindex" />
+  <title>Book a Ride | NOLA Premier Limo</title>
+  <link rel="stylesheet" href="css/global.css" />
+  <style>
+    .booking-layout {
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 3rem;
+      align-items: start;
+      margin-top: 2rem;
+    }
+
+    /* ── Calendar ── */
+    .calendar-wrap {
+      background: var(--black-card);
+      border: 1px solid var(--black-border);
+      border-radius: var(--radius-lg);
+      padding: 2rem;
+    }
+
+    .cal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+    }
+
+    .cal-month {
+      font-family: var(--font-display);
+      font-size: 1.4rem;
+      font-weight: 400;
+    }
+
+    .cal-nav {
+      background: none;
+      border: 1px solid var(--black-border);
+      color: var(--white);
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: all var(--transition);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .cal-nav:hover {
+      border-color: var(--gold-dim);
+      color: var(--gold);
+    }
+
+    .cal-days-header {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      text-align: center;
+      margin-bottom: 0.5rem;
+    }
+
+    .cal-days-header span {
+      font-size: 0.6rem;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--white-faint);
+      padding: 0.5rem 0;
+    }
+
+    .cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 3px;
+    }
+
+    .cal-day {
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--radius);
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all var(--transition);
+      border: 1px solid transparent;
+      background: none;
+      color: var(--white);
+      font-family: var(--font-body);
+      font-weight: 300;
+      position: relative;
+    }
+
+    .cal-day:hover:not(.disabled):not(.empty) {
+      border-color: var(--gold-dim);
+      color: var(--gold);
+    }
+
+    .cal-day.today {
+      color: var(--gold);
+      font-weight: 500;
+    }
+
+    .cal-day.today::after {
+      content: '';
+      position: absolute;
+      bottom: 4px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 4px; height: 4px;
+      border-radius: 50%;
+      background: var(--gold);
+    }
+
+    .cal-day.selected {
+      background: var(--gold);
+      color: var(--black);
+      font-weight: 600;
+      border-color: var(--gold);
+    }
+
+    .cal-day.disabled {
+      color: var(--white-faint);
+      cursor: not-allowed;
+      opacity: 0.35;
+    }
+
+    .cal-day.booked {
+      color: var(--white-faint);
+      cursor: not-allowed;
+      position: relative;
+    }
+
+    .cal-day.booked::before {
+      content: '';
+      position: absolute;
+      inset: 4px;
+      border-radius: var(--radius);
+      background: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 2px,
+        rgba(255,255,255,0.04) 2px,
+        rgba(255,255,255,0.04) 4px
+      );
+    }
+
+    .cal-day.empty { cursor: default; }
+
+    .cal-loading {
+      text-align: center;
+      padding: 2rem;
+      color: var(--white-dim);
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.8rem;
+    }
+
+    .cal-legend {
+      display: flex;
+      gap: 1.5rem;
+      margin-top: 1.2rem;
+      padding-top: 1.2rem;
+      border-top: 1px solid var(--black-border);
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.72rem;
+      color: var(--white-dim);
+    }
+
+    .legend-dot {
+      width: 10px; height: 10px;
+      border-radius: 2px;
+    }
+
+    .ld-available { background: var(--black-border); border: 1px solid #333; }
+    .ld-selected  { background: var(--gold); }
+    .ld-booked    { background: repeating-linear-gradient(45deg, #1a1a1a, #1a1a1a 2px, #111 2px, #111 4px); border: 1px solid #2a2a2a; }
+
+    /* ── Time Slots ── */
+    .time-section {
+      margin-top: 2rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--black-border);
+    }
+
+    .time-label {
+      font-size: 0.65rem;
+      font-weight: 600;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 1rem;
+    }
+
+    .time-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.5rem;
+    }
+
+    .time-slot {
+      padding: 0.6rem 0.3rem;
+      text-align: center;
+      border: 1px solid var(--black-border);
+      border-radius: var(--radius);
+      font-size: 0.78rem;
+      cursor: pointer;
+      transition: all var(--transition);
+      background: none;
+      color: var(--white-dim);
+      font-family: var(--font-body);
+    }
+
+    .time-slot:hover:not(.unavailable) {
+      border-color: var(--gold-dim);
+      color: var(--gold);
+    }
+
+    .time-slot.selected {
+      background: var(--gold);
+      border-color: var(--gold);
+      color: var(--black);
+      font-weight: 600;
+    }
+
+    .time-slot.unavailable {
+      opacity: 0.3;
+      cursor: not-allowed;
+      text-decoration: line-through;
+    }
+
+    /* ── Booking Form ── */
+    .booking-form {
+      background: var(--black-card);
+      border: 1px solid var(--black-border);
+      border-radius: var(--radius-lg);
+      padding: 2rem;
+      position: sticky;
+      top: 7rem;
+    }
+
+    .booking-form h3 {
+      font-family: var(--font-display);
+      font-size: 1.4rem;
+      font-weight: 400;
+      margin-bottom: 0.25rem;
+    }
+
+    .booking-form-fields {
+      display: flex;
+      flex-direction: column;
+      gap: 1.2rem;
+      margin-top: 1.5rem;
+    }
+
+    .selected-summary {
+      background: rgba(201,168,76,0.07);
+      border: 1px solid var(--gold-dim);
+      border-radius: var(--radius);
+      padding: 1rem;
+      font-size: 0.85rem;
+      color: var(--gold-light);
+      display: none;
+    }
+
+    .selected-summary.visible {
+      display: block;
+    }
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .summary-row span:first-child {
+      color: var(--white-dim);
+      font-size: 0.75rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .price-note {
+      font-size: 0.72rem;
+      color: var(--white-faint);
+      margin-top: 0.5rem;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    @media (max-width: 900px) {
+      .booking-layout { grid-template-columns: 1fr; }
+      .booking-form { position: static; }
+      .time-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navigation -->
+  <nav class="nav scrolled" role="navigation" aria-label="Main navigation">
+    <a href="index.html" class="nav-logo" aria-label="NOLA Premier Limo Home">
+      NOLA <span>Premier</span>
+    </a>
+    <ul class="nav-links" role="list">
+      <li><a href="index.html#services">Services</a></li>
+      <li><a href="index.html#vehicle">Vehicle</a></li>
+      <li><a href="booking.html" class="active nav-cta">Book a Ride</a></li>
+    </ul>
+  </nav>
+
+  <!-- Page Header -->
+  <header class="page-header">
+    <div class="container">
+      <div class="progress-steps" role="navigation" aria-label="Booking progress">
+        <div class="step active" aria-current="step">
+          <div class="step-num">1</div>
+          <div class="step-label">Schedule</div>
+        </div>
+        <div class="step-line"></div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-label">Payment</div>
+        </div>
+        <div class="step-line"></div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-label">Confirmed</div>
+        </div>
+      </div>
+      <span class="section-label">Step 1 of 3</span>
+      <div class="gold-rule center"></div>
+      <h1 class="display-lg">Reserve Your <em>Ride</em></h1>
+    </div>
+  </header>
+
+  <main class="section" id="main-content">
+    <div class="container">
+      <div id="booking-error" class="alert alert-error" style="display:none;margin-bottom:1.5rem" role="alert"></div>
+
+      <div class="booking-layout">
+
+        <!-- Calendar Column -->
+        <div>
+          <div class="calendar-wrap">
+            <div class="cal-header">
+              <button class="cal-nav" id="prev-month" aria-label="Previous month">&#8249;</button>
+              <h2 class="cal-month" id="cal-month-label" aria-live="polite"></h2>
+              <button class="cal-nav" id="next-month" aria-label="Next month">&#8250;</button>
+            </div>
+            <div class="cal-days-header" aria-hidden="true">
+              <span>Su</span><span>Mo</span><span>Tu</span>
+              <span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
+            </div>
+            <div class="cal-grid" id="cal-grid" role="grid" aria-label="Select a booking date"></div>
+
+            <div class="cal-legend" aria-hidden="true">
+              <div class="legend-item"><span class="legend-dot ld-available"></span> Available</div>
+              <div class="legend-item"><span class="legend-dot ld-selected"></span> Selected</div>
+              <div class="legend-item"><span class="legend-dot ld-booked"></span> Booked</div>
+            </div>
+          </div>
+
+          <!-- Time Slots (shown after date selection) -->
+          <div class="calendar-wrap time-section" id="time-section" style="display:none" aria-live="polite">
+            <div class="time-label">Available Times</div>
+            <div class="time-grid" id="time-grid" role="group" aria-label="Select a time slot"></div>
+          </div>
+        </div>
+
+        <!-- Booking Form -->
+        <aside class="booking-form" aria-label="Booking details">
+          <h3>Trip Details</h3>
+          <p style="color:var(--white-dim);font-size:0.82rem">Select a date and time, then complete your booking information.</p>
+
+          <div class="selected-summary" id="selection-summary">
+            <div class="summary-row">
+              <span>Date</span>
+              <span id="sum-date">—</span>
+            </div>
+            <div class="summary-row" style="margin-top:0.4rem">
+              <span>Time</span>
+              <span id="sum-time">—</span>
+            </div>
+            <div class="summary-row" style="margin-top:0.4rem">
+              <span>Service</span>
+              <span id="sum-service">—</span>
+            </div>
+          </div>
+
+          <div class="booking-form-fields">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="first-name">First Name</label>
+                <input type="text" id="first-name" name="firstName"
+                       autocomplete="given-name" required
+                       placeholder="Jean" />
+              </div>
+              <div class="form-group">
+                <label for="last-name">Last Name</label>
+                <input type="text" id="last-name" name="lastName"
+                       autocomplete="family-name" required
+                       placeholder="Dupont" />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="email">Email Address</label>
+              <input type="email" id="email" name="email"
+                     autocomplete="email" required
+                     placeholder="you@email.com" />
+            </div>
+
+            <div class="form-group">
+              <label for="phone">Phone Number</label>
+              <input type="tel" id="phone" name="phone"
+                     autocomplete="tel" required
+                     placeholder="(504) 000-0000" />
+            </div>
+
+            <div class="form-group">
+              <label for="service-type">Service Type</label>
+              <select id="service-type" name="serviceType" required>
+                <option value="">Select a service…</option>
+                <option value="airport">Airport Transfer</option>
+                <option value="corporate">Corporate Travel</option>
+                <option value="wedding">Wedding</option>
+                <option value="event">Special Event</option>
+                <option value="hourly">Hourly Charter</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="pickup">Pickup Address</label>
+              <input type="text" id="pickup" name="pickup"
+                     placeholder="123 Royal Street, New Orleans, LA"
+                     required />
+            </div>
+
+            <div class="form-group">
+              <label for="dropoff">Drop-off / Destination</label>
+              <input type="text" id="dropoff" name="dropoff"
+                     placeholder="Louis Armstrong International Airport"
+                     required />
+            </div>
+
+            <div class="form-group">
+              <label for="passengers">Number of Passengers</label>
+              <select id="passengers" name="passengers" required>
+                <option value="">Select…</option>
+                <option value="1">1 passenger</option>
+                <option value="2">2 passengers</option>
+                <option value="3">3 passengers</option>
+                <option value="4">4 passengers</option>
+                <option value="5">5 passengers</option>
+                <option value="6">6 passengers</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="notes">Special Requests <span style="font-weight:300;letter-spacing:0">(optional)</span></label>
+              <textarea id="notes" name="notes" rows="3"
+                        placeholder="Child seat, luggage, flight number, accessibility needs…"
+                        maxlength="500"></textarea>
+            </div>
+
+            <p class="price-note">Final pricing will be confirmed at checkout based on service type and distance.</p>
+
+            <button class="btn btn-primary" id="continue-btn" style="width:100%" disabled>
+              Continue to Checkout
+            </button>
+          </div>
+        </aside>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer" role="contentinfo">
+    <div class="container">
+      <div class="footer-bottom">
+        <p>© 2025 NOLA Premier Limo. All rights reserved.</p>
+        <p><a href="tel:+15041234567">(504) 123-4567</a></p>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+  // ═══════════════════════════════════════════════════════════════
+  //  BOOKING PAGE — Calendar + Form Logic
+  //  Security: All inputs sanitized; no sensitive data in sessionStorage
+  //  as plain text (only non-sensitive booking metadata).
+  //  Actual payment data never touches this page.
+  // ═══════════════════════════════════════════════════════════════
+
+  // ── Security: sanitize text before DOM insertion ─────────────
+  function sanitizeText(str) {
+    const el = document.createElement('div');
+    el.textContent = String(str || '');
+    return el.innerHTML;
+  }
+
+  // ── State ────────────────────────────────────────────────────
+  let currentDate    = new Date();
+  let selectedDate   = null;
+  let selectedTime   = null;
+  let bookedSlots    = {};   // { 'YYYY-MM-DD': ['09:00','10:00'] }
+
+  const MONTHS = ['January','February','March','April','May','June',
+                  'July','August','September','October','November','December'];
+
+  const ALL_TIMES = [
+    '06:00','07:00','08:00','09:00','10:00','11:00',
+    '12:00','13:00','14:00','15:00','16:00','17:00',
+    '18:00','19:00','20:00','21:00'
+  ];
+
+  // ── Format helpers ───────────────────────────────────────────
+  function toDateKey(d) {
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+
+  function formatDisplayDate(d) {
+    return d.toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+  }
+
+  function formatTime(t) {
+    const [h, m] = t.split(':').map(Number);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const hour = h % 12 || 12;
+    return `${hour}:${String(m).padStart(2,'0')} ${ampm}`;
+  }
+
+  // ── Fetch booked slots from our Netlify function ─────────────
+  async function fetchAvailability(year, month) {
+    try {
+      const res = await fetch(
+        `/api/availability?year=${year}&month=${month + 1}`,
+        { method: 'GET', credentials: 'same-origin' }
+      );
+      if (!res.ok) throw new Error('Network response was not ok');
+      const data = await res.json();
+      // data.bookedSlots: { 'YYYY-MM-DD': ['HH:MM', ...] }
+      return data.bookedSlots || {};
+    } catch {
+      // Fail silently: show all dates as available, don't break booking
+      return {};
+    }
+  }
+
+  // ── Render calendar ──────────────────────────────────────────
+  async function renderCalendar(year, month) {
+    const grid  = document.getElementById('cal-grid');
+    const label = document.getElementById('cal-month-label');
+
+    label.textContent = `${MONTHS[month]} ${year}`;
+    grid.innerHTML    = `<div class="cal-loading" aria-live="polite"><span class="spinner"></span> Checking availability…</div>`;
+
+    bookedSlots = await fetchAvailability(year, month);
+
+    grid.innerHTML = '';
+
+    const firstDay   = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const today      = new Date();
+    today.setHours(0,0,0,0);
+
+    // Empty cells before first day
+    for (let i = 0; i < firstDay; i++) {
+      const empty = document.createElement('button');
+      empty.className = 'cal-day empty';
+      empty.setAttribute('aria-hidden', 'true');
+      empty.setAttribute('tabindex', '-1');
+      grid.appendChild(empty);
+    }
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date    = new Date(year, month, day);
+      const key     = toDateKey(date);
+      const isPast  = date < today;
+      const isToday = toDateKey(date) === toDateKey(today);
+      const isSel   = selectedDate && toDateKey(selectedDate) === key;
+
+      // A day is fully booked if ALL time slots are taken
+      const dayBooked = bookedSlots[key] && bookedSlots[key].length >= ALL_TIMES.length;
+
+      const btn = document.createElement('button');
+      btn.className = 'cal-day';
+      btn.textContent = day;
+      btn.setAttribute('aria-label', `${MONTHS[month]} ${day}, ${year}`);
+
+      if (isPast || dayBooked) {
+        btn.classList.add('disabled');
+        btn.setAttribute('aria-disabled', 'true');
+        if (dayBooked) btn.classList.add('booked');
+        btn.setAttribute('tabindex', '-1');
+      } else {
+        if (isToday) btn.classList.add('today');
+        if (isSel) btn.classList.add('selected');
+        btn.addEventListener('click', () => selectDate(date));
+        btn.setAttribute('role', 'gridcell');
+      }
+      grid.appendChild(btn);
+    }
+  }
+
+  // ── Date selection ───────────────────────────────────────────
+  function selectDate(date) {
+    selectedDate = date;
+    selectedTime = null;
+    renderCalendar(date.getFullYear(), date.getMonth());
+    renderTimeSlots(date);
+    updateSummary();
+    checkContinue();
+  }
+
+  // ── Render time slots ────────────────────────────────────────
+  function renderTimeSlots(date) {
+    const section = document.getElementById('time-section');
+    const grid    = document.getElementById('time-grid');
+    const key     = toDateKey(date);
+    const taken   = bookedSlots[key] || [];
+
+    section.style.display = 'block';
+    grid.innerHTML = '';
+
+    ALL_TIMES.forEach(t => {
+      const isUnavail = taken.includes(t);
+      const btn = document.createElement('button');
+      btn.className  = `time-slot${isUnavail ? ' unavailable' : ''}`;
+      btn.textContent = formatTime(t);
+      btn.setAttribute('aria-label', isUnavail ? `${formatTime(t)} — unavailable` : formatTime(t));
+      if (isUnavail) {
+        btn.setAttribute('aria-disabled', 'true');
+        btn.setAttribute('tabindex', '-1');
+      } else {
+        btn.addEventListener('click', () => selectTime(t, btn));
+      }
+      grid.appendChild(btn);
+    });
+  }
+
+  // ── Time selection ───────────────────────────────────────────
+  function selectTime(time, btn) {
+    document.querySelectorAll('.time-slot').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    selectedTime = time;
+    updateSummary();
+    checkContinue();
+  }
+
+  // ── Update booking summary panel ─────────────────────────────
+  function updateSummary() {
+    const summary  = document.getElementById('selection-summary');
+    const sumDate  = document.getElementById('sum-date');
+    const sumTime  = document.getElementById('sum-time');
+    const sumSvc   = document.getElementById('sum-service');
+    const svcEl    = document.getElementById('service-type');
+
+    if (selectedDate || selectedTime) {
+      summary.classList.add('visible');
+    }
+
+    sumDate.textContent = selectedDate ? formatDisplayDate(selectedDate) : '—';
+    sumTime.textContent = selectedTime ? formatTime(selectedTime) : '—';
+    sumSvc.textContent  = svcEl.value
+      ? svcEl.options[svcEl.selectedIndex].text
+      : '—';
+  }
+
+  // ── Enable / disable continue button ─────────────────────────
+  function checkContinue() {
+    const btn   = document.getElementById('continue-btn');
+    const fname = document.getElementById('first-name').value.trim();
+    const lname = document.getElementById('last-name').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const phone = document.getElementById('phone').value.trim();
+    const svc   = document.getElementById('service-type').value;
+    const pick  = document.getElementById('pickup').value.trim();
+    const drop  = document.getElementById('dropoff').value.trim();
+    const pass  = document.getElementById('passengers').value;
+
+    const ready = selectedDate && selectedTime && fname && lname
+                  && email && phone && svc && pick && drop && pass;
+    btn.disabled = !ready;
+  }
+
+  // ── Input validation ──────────────────────────────────────────
+  function validateEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+
+  function validatePhone(phone) {
+    return /^[\d\s\-\(\)\+]{7,20}$/.test(phone);
+  }
+
+  // ── Continue → Checkout ───────────────────────────────────────
+  document.getElementById('continue-btn').addEventListener('click', () => {
+    const errorEl = document.getElementById('booking-error');
+    errorEl.style.display = 'none';
+
+    // Validate
+    const email = document.getElementById('email').value.trim();
+    const phone = document.getElementById('phone').value.trim();
+
+    if (!validateEmail(email)) {
+      errorEl.textContent = 'Please enter a valid email address.';
+      errorEl.style.display = 'block';
+      document.getElementById('email').focus();
+      return;
+    }
+
+    if (!validatePhone(phone)) {
+      errorEl.textContent = 'Please enter a valid phone number.';
+      errorEl.style.display = 'block';
+      document.getElementById('phone').focus();
+      return;
+    }
+
+    // Store only non-sensitive booking metadata in sessionStorage
+    // Payment data is handled exclusively by Square on the next page
+    const booking = {
+      date:        toDateKey(selectedDate),
+      displayDate: formatDisplayDate(selectedDate),
+      time:        selectedTime,
+      displayTime: formatTime(selectedTime),
+      serviceType: document.getElementById('service-type').value,
+      serviceName: document.getElementById('service-type').options[
+                     document.getElementById('service-type').selectedIndex
+                   ].text,
+      firstName:   document.getElementById('first-name').value.trim(),
+      lastName:    document.getElementById('last-name').value.trim(),
+      email:       email,
+      phone:       phone,
+      pickup:      document.getElementById('pickup').value.trim(),
+      dropoff:     document.getElementById('dropoff').value.trim(),
+      passengers:  document.getElementById('passengers').value,
+      notes:       document.getElementById('notes').value.trim().slice(0, 500),
+      // CSRF-like nonce to validate on checkout page
+      nonce:       crypto.randomUUID(),
+      expires:     Date.now() + 30 * 60 * 1000  // 30 min session
+    };
+
+    sessionStorage.setItem('bookingData', JSON.stringify(booking));
+    window.location.href = 'checkout.html';
+  });
+
+  // ── Month navigation ──────────────────────────────────────────
+  document.getElementById('prev-month').addEventListener('click', () => {
+    const today = new Date();
+    if (currentDate.getFullYear() === today.getFullYear() &&
+        currentDate.getMonth() === today.getMonth()) return;
+    currentDate.setMonth(currentDate.getMonth() - 1);
+    renderCalendar(currentDate.getFullYear(), currentDate.getMonth());
+  });
+
+  document.getElementById('next-month').addEventListener('click', () => {
+    currentDate.setMonth(currentDate.getMonth() + 1);
+    renderCalendar(currentDate.getFullYear(), currentDate.getMonth());
+  });
+
+  // ── Watch form fields for live validation ─────────────────────
+  ['first-name','last-name','email','phone','service-type','pickup','dropoff','passengers']
+    .forEach(id => {
+      document.getElementById(id).addEventListener('input', () => {
+        checkContinue();
+        updateSummary();
+      });
+    });
+
+  document.getElementById('service-type').addEventListener('change', updateSummary);
+
+  // ── Initial render ────────────────────────────────────────────
+  renderCalendar(currentDate.getFullYear(), currentDate.getMonth());
+  </script>
+</body>
+</html>

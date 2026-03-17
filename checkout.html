@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Checkout | NOLA Premier Limo</title>
+  <link rel="stylesheet" href="css/global.css" />
+  <!-- Square Web Payments SDK (sandbox — change to production URL when live) -->
+  <script src="https://sandbox.web.squarecdn.com/v1/square.js"></script>
+  <style>
+    .checkout-layout {
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 3rem;
+      align-items: start;
+      margin-top: 2rem;
+    }
+
+    /* ── Order Summary ── */
+    .order-summary {
+      background: var(--black-card);
+      border: 1px solid var(--black-border);
+      border-radius: var(--radius-lg);
+      padding: 2rem;
+      position: sticky;
+      top: 7rem;
+    }
+
+    .order-summary h3 {
+      font-family: var(--font-display);
+      font-size: 1.3rem;
+      font-weight: 400;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--black-border);
+    }
+
+    .order-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 0.6rem 0;
+    }
+
+    .order-row-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--white-dim);
+    }
+
+    .order-row-value {
+      font-size: 0.88rem;
+      color: var(--white);
+      text-align: right;
+      max-width: 200px;
+    }
+
+    .order-divider {
+      border: none;
+      border-top: 1px solid var(--black-border);
+      margin: 1rem 0;
+    }
+
+    .order-total {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--gold-dim);
+    }
+
+    .order-total-label {
+      font-family: var(--font-display);
+      font-size: 1rem;
+      color: var(--white-dim);
+    }
+
+    .order-total-amount {
+      font-family: var(--font-display);
+      font-size: 1.8rem;
+      font-weight: 400;
+      color: var(--gold);
+    }
+
+    .price-notice {
+      font-size: 0.72rem;
+      color: var(--white-faint);
+      margin-top: 0.8rem;
+      font-style: italic;
+    }
+
+    /* ── Payment Form ── */
+    .payment-card {
+      background: var(--black-card);
+      border: 1px solid var(--black-border);
+      border-radius: var(--radius-lg);
+      padding: 2rem;
+    }
+
+    .payment-card h2 {
+      font-family: var(--font-display);
+      font-size: 1.6rem;
+      font-weight: 300;
+      margin-bottom: 0.5rem;
+    }
+
+    .payment-card > p {
+      color: var(--white-dim);
+      font-size: 0.85rem;
+      margin-bottom: 2rem;
+    }
+
+    /* Square card container */
+    #card-container {
+      min-height: 90px;
+      margin: 1rem 0 0.5rem;
+    }
+
+    /* Style Square's iframe to match our dark theme */
+    #card-container .sq-card-wrapper {
+      background: transparent !important;
+    }
+
+    .card-fields-label {
+      font-size: 0.65rem;
+      font-weight: 600;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--white-dim);
+      margin-bottom: 0.5rem;
+    }
+
+    .secure-badges {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-top: 1rem;
+      padding: 0.8rem;
+      border: 1px solid var(--black-border);
+      border-radius: var(--radius);
+    }
+
+    .badge {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.68rem;
+      color: var(--white-dim);
+      letter-spacing: 0.08em;
+    }
+
+    .badge-icon { font-size: 0.9rem; }
+
+    .pay-btn {
+      width: 100%;
+      margin-top: 1.5rem;
+      font-size: 0.85rem;
+      padding: 1.1rem;
+      justify-content: center;
+    }
+
+    .pay-btn .spinner { display: none; }
+    .pay-btn.loading .spinner { display: inline-block; }
+    .pay-btn.loading .btn-text { display: none; }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.72rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--white-dim);
+      margin-bottom: 2rem;
+      transition: color var(--transition);
+    }
+
+    .back-link:hover { color: var(--gold); }
+
+    @media (max-width: 900px) {
+      .checkout-layout {
+        grid-template-columns: 1fr;
+      }
+      .order-summary { position: static; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navigation -->
+  <nav class="nav scrolled" role="navigation" aria-label="Main navigation">
+    <a href="index.html" class="nav-logo" aria-label="NOLA Premier Limo Home">
+      NOLA <span>Premier</span>
+    </a>
+    <ul class="nav-links" role="list">
+      <li><a href="index.html#services">Services</a></li>
+      <li><a href="booking.html">Booking</a></li>
+    </ul>
+  </nav>
+
+  <!-- Page Header -->
+  <header class="page-header">
+    <div class="container">
+      <div class="progress-steps" role="navigation" aria-label="Booking progress">
+        <div class="step done">
+          <div class="step-num">✓</div>
+          <div class="step-label">Schedule</div>
+        </div>
+        <div class="step-line done"></div>
+        <div class="step active" aria-current="step">
+          <div class="step-num">2</div>
+          <div class="step-label">Payment</div>
+        </div>
+        <div class="step-line"></div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-label">Confirmed</div>
+        </div>
+      </div>
+      <span class="section-label">Step 2 of 3</span>
+      <div class="gold-rule center"></div>
+      <h1 class="display-lg">Secure <em>Checkout</em></h1>
+    </div>
+  </header>
+
+  <main class="section" id="main-content">
+    <div class="container">
+
+      <a href="booking.html" class="back-link" aria-label="Go back to booking page">
+        &#8592; &nbsp; Back to Booking
+      </a>
+
+      <div id="checkout-error" class="alert alert-error" style="display:none;margin-bottom:1.5rem" role="alert" aria-live="assertive"></div>
+      <div id="checkout-info"  class="alert alert-info"  style="display:none;margin-bottom:1.5rem" role="status" aria-live="polite"></div>
+
+      <div class="checkout-layout">
+
+        <!-- Payment Form -->
+        <div class="payment-card">
+          <h2>Payment <em>Details</em></h2>
+          <p>Your information is encrypted and processed securely through Square. We never store your card details.</p>
+
+          <div class="card-fields-label">Card Information</div>
+          <div id="card-container" aria-label="Credit card input"></div>
+
+          <div class="secure-badges" aria-label="Security certifications">
+            <div class="badge"><span class="badge-icon" aria-hidden="true">🔒</span> SSL Encrypted</div>
+            <div class="badge"><span class="badge-icon" aria-hidden="true">⬛</span> Square Secure</div>
+            <div class="badge"><span class="badge-icon" aria-hidden="true">✓</span> PCI Compliant</div>
+          </div>
+
+          <button class="btn btn-primary pay-btn" id="pay-btn" type="button" aria-live="polite">
+            <span class="spinner" aria-hidden="true"></span>
+            <span class="btn-text">Confirm &amp; Pay</span>
+          </button>
+        </div>
+
+        <!-- Order Summary -->
+        <aside class="order-summary" aria-label="Order summary">
+          <h3>Booking Summary</h3>
+
+          <div class="order-row">
+            <span class="order-row-label">Service</span>
+            <span class="order-row-value" id="sum-service">—</span>
+          </div>
+          <div class="order-row">
+            <span class="order-row-label">Date</span>
+            <span class="order-row-value" id="sum-date">—</span>
+          </div>
+          <div class="order-row">
+            <span class="order-row-label">Time</span>
+            <span class="order-row-value" id="sum-time">—</span>
+          </div>
+          <div class="order-row">
+            <span class="order-row-label">Passengers</span>
+            <span class="order-row-value" id="sum-passengers">—</span>
+          </div>
+          <hr class="order-divider" />
+          <div class="order-row">
+            <span class="order-row-label">Pickup</span>
+            <span class="order-row-value" id="sum-pickup">—</span>
+          </div>
+          <div class="order-row">
+            <span class="order-row-label">Drop-off</span>
+            <span class="order-row-value" id="sum-dropoff">—</span>
+          </div>
+          <hr class="order-divider" />
+          <div class="order-row">
+            <span class="order-row-label">Guest</span>
+            <span class="order-row-value" id="sum-name">—</span>
+          </div>
+
+          <div class="order-total">
+            <span class="order-total-label">Total Due</span>
+            <span class="order-total-amount" id="sum-total" aria-live="polite">—</span>
+          </div>
+
+          <p class="price-notice">
+            Pricing is calculated by service type and distance. 
+            Final total confirmed below.
+          </p>
+        </aside>
+
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer" role="contentinfo">
+    <div class="container">
+      <div class="footer-bottom">
+        <p>© 2025 NOLA Premier Limo. All rights reserved.</p>
+        <p>Payments processed securely by Square</p>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+  // ═══════════════════════════════════════════════════════════════
+  //  CHECKOUT PAGE
+  //  Security best practices:
+  //  • Booking data read from sessionStorage, validated server-side
+  //  • Card tokenized by Square SDK — raw card data never touches
+  //    our server or JavaScript
+  //  • Payment processed server-side via Netlify Function
+  //  • XSS: all booking data inserted as textContent, not innerHTML
+  // ═══════════════════════════════════════════════════════════════
+
+  const errorEl = document.getElementById('checkout-error');
+  const infoEl  = document.getElementById('checkout-info');
+
+  function showError(msg) {
+    errorEl.textContent = msg;
+    errorEl.style.display = 'block';
+    infoEl.style.display  = 'none';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function showInfo(msg) {
+    infoEl.textContent = msg;
+    infoEl.style.display = 'block';
+  }
+
+  // ── Load and validate booking data ───────────────────────────
+  let booking = null;
+
+  try {
+    const raw = sessionStorage.getItem('bookingData');
+    if (!raw) throw new Error('No booking found');
+    booking = JSON.parse(raw);
+
+    // Validate required fields
+    const required = ['date','time','serviceType','firstName','lastName',
+                      'email','pickup','dropoff','passengers','nonce','expires'];
+    for (const field of required) {
+      if (!booking[field]) throw new Error(`Missing booking field: ${field}`);
+    }
+
+    // Check expiry (30 min session)
+    if (Date.now() > booking.expires) {
+      sessionStorage.removeItem('bookingData');
+      throw new Error('Booking session expired. Please start over.');
+    }
+
+  } catch (err) {
+    showError(err.message || 'Invalid booking session. Please return to booking.');
+    document.getElementById('pay-btn').disabled = true;
+  }
+
+  // ── Populate order summary ────────────────────────────────────
+  // Using textContent throughout — never innerHTML — to prevent XSS
+  if (booking) {
+    document.getElementById('sum-service').textContent    = booking.serviceName   || '—';
+    document.getElementById('sum-date').textContent       = booking.displayDate   || '—';
+    document.getElementById('sum-time').textContent       = booking.displayTime   || '—';
+    document.getElementById('sum-passengers').textContent = booking.passengers
+      ? `${booking.passengers} passenger${booking.passengers > 1 ? 's' : ''}` : '—';
+    document.getElementById('sum-pickup').textContent     = booking.pickup        || '—';
+    document.getElementById('sum-dropoff').textContent    = booking.dropoff       || '—';
+    document.getElementById('sum-name').textContent       =
+      `${booking.firstName} ${booking.lastName}`;
+
+    // Fetch price estimate from server
+    fetchPriceEstimate();
+  }
+
+  async function fetchPriceEstimate() {
+    try {
+      const res = await fetch('/api/get-price', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          serviceType: booking.serviceType,
+          pickup:      booking.pickup,
+          dropoff:     booking.dropoff,
+          passengers:  booking.passengers
+        })
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      document.getElementById('sum-total').textContent =
+        `$${(data.amountCents / 100).toFixed(2)}`;
+      // Store amount for payment
+      booking._amountCents = data.amountCents;
+    } catch {
+      document.getElementById('sum-total').textContent = 'Quoted on confirmation';
+      booking._amountCents = null;
+    }
+  }
+
+  // ── Initialize Square Payments ────────────────────────────────
+  // Application ID is loaded from a meta tag injected by a Netlify
+  // Edge Function at serve time — never hardcoded here.
+  // For now we read from window.__SQUARE_APP_ID set by Netlify Function.
+
+  let card = null;
+
+  async function initSquare() {
+    try {
+      // Application ID comes from the server, not hardcoded
+      const res = await fetch('/api/square-config', { credentials: 'same-origin' });
+      if (!res.ok) throw new Error('Could not load payment config');
+      const config = await res.json();
+
+      if (!window.Square) throw new Error('Square SDK not loaded');
+
+      const payments = Square.payments(config.applicationId, config.locationId);
+
+      card = await payments.card({
+        style: {
+          '.input-container': {
+            borderColor:  '#1a1a1a',
+            borderRadius: '2px',
+          },
+          '.input-container.is-focus': {
+            borderColor: '#8a6f30',
+          },
+          '.input-container.is-error': {
+            borderColor: '#b42828',
+          },
+          input: {
+            backgroundColor: '#0f0f0f',
+            color:           '#f5f0e8',
+            fontFamily:      'Montserrat, sans-serif',
+            fontSize:        '14px',
+            fontWeight:      '300',
+          },
+          'input::placeholder': {
+            color: '#3a3530',
+          },
+          '.message-text': { color: '#e88' },
+          '.message-icon': { color: '#e88' },
+        }
+      });
+
+      await card.attach('#card-container');
+
+    } catch (err) {
+      showError('Payment system could not load. Please refresh or call us at (504) 123-4567.');
+      document.getElementById('pay-btn').disabled = true;
+    }
+  }
+
+  // ── Handle payment submission ─────────────────────────────────
+  document.getElementById('pay-btn').addEventListener('click', async () => {
+    if (!card || !booking) return;
+
+    const btn = document.getElementById('pay-btn');
+    btn.classList.add('loading');
+    btn.disabled = true;
+    errorEl.style.display = 'none';
+    showInfo('Processing your payment…');
+
+    try {
+      // 1. Tokenize card (Square SDK — card data never hits our server)
+      const result = await card.tokenize();
+
+      if (result.status !== 'OK') {
+        throw new Error(result.errors?.map(e => e.message).join(', ')
+          || 'Card tokenization failed. Please check your card details.');
+      }
+
+      const token = result.token;
+
+      // 2. Send token + booking metadata to our Netlify function
+      //    (no raw card data in this payload)
+      const payRes = await fetch('/api/process-payment', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sourceId:    token,
+          bookingData: {
+            date:        booking.date,
+            time:        booking.time,
+            serviceType: booking.serviceType,
+            firstName:   booking.firstName,
+            lastName:    booking.lastName,
+            email:       booking.email,
+            phone:       booking.phone,
+            pickup:      booking.pickup,
+            dropoff:     booking.dropoff,
+            passengers:  booking.passengers,
+            notes:       booking.notes,
+            nonce:       booking.nonce,
+          }
+        })
+      });
+
+      const payData = await payRes.json();
+
+      if (!payRes.ok || !payData.success) {
+        throw new Error(payData.error || 'Payment could not be processed. Please try again.');
+      }
+
+      // 3. Success — store confirmation (no payment data) and redirect
+      sessionStorage.removeItem('bookingData');
+      sessionStorage.setItem('confirmationData', JSON.stringify({
+        confirmationId: payData.confirmationId,
+        date:           booking.displayDate,
+        time:           booking.displayTime,
+        serviceName:    booking.serviceName,
+        firstName:      booking.firstName,
+        lastName:       booking.lastName,
+        email:          booking.email,
+        pickup:         booking.pickup,
+        dropoff:        booking.dropoff,
+        passengers:     booking.passengers,
+        amountPaid:     payData.amountPaid,
+      }));
+
+      window.location.href = 'confirmation.html';
+
+    } catch (err) {
+      showError(err.message || 'An unexpected error occurred. Please try again.');
+      btn.classList.remove('loading');
+      btn.disabled = false;
+      infoEl.style.display = 'none';
+    }
+  });
+
+  // ── Boot ──────────────────────────────────────────────────────
+  if (booking) { initSquare(); }
+  </script>
+</body>
+</html>

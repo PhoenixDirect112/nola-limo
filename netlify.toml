@@ -1,0 +1,56 @@
+[build]
+  publish = "."
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "18"
+
+# ─── Security Headers ────────────────────────────────────────────────────────
+[[headers]]
+  for = "/*"
+  [headers.values]
+    # Prevent clickjacking
+    X-Frame-Options = "DENY"
+    # Block MIME-type sniffing
+    X-Content-Type-Options = "nosniff"
+    # Force HTTPS (1 year, include subdomains)
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains; preload"
+    # XSS protection (legacy browsers)
+    X-XSS-Protection = "1; mode=block"
+    # Referrer policy – don't leak URL params
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    # Permissions policy – disable unused browser features
+    Permissions-Policy = "camera=(), microphone=(), geolocation=(), payment=(self)"
+    # Content Security Policy
+    Content-Security-Policy = """
+      default-src 'self';
+      script-src 'self' https://sandbox.web.squarecdn.com https://web.squarecdn.com https://js.squareup.com 'unsafe-inline';
+      style-src 'self' https://fonts.googleapis.com 'unsafe-inline';
+      font-src 'self' https://fonts.gstatic.com;
+      img-src 'self' data: https:;
+      connect-src 'self' https://connect.squareup.com https://connect.squareupsandbox.com https://graph.microsoft.com https://login.microsoftonline.com;
+      frame-src https://sandbox.web.squarecdn.com https://web.squarecdn.com;
+    """
+
+# ─── Redirect bare domain → www (optional, update to your domain) ────────────
+[[redirects]]
+  from = "http://yourdomain.com/*"
+  to   = "https://www.yourdomain.com/:splat"
+  status = 301
+  force  = true
+
+# ─── SPA-style clean URLs ────────────────────────────────────────────────────
+[[redirects]]
+  from   = "/booking"
+  to     = "/booking.html"
+  status = 200
+
+[[redirects]]
+  from   = "/checkout"
+  to     = "/checkout.html"
+  status = 200
+
+[[redirects]]
+  from   = "/confirmation"
+  to     = "/confirmation.html"
+  status = 200

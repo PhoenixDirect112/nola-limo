@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Booking Confirmed | NOLA Premier Limo</title>
+  <link rel="stylesheet" href="css/global.css" />
+  <style>
+    .confirmation-wrap {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 4rem 0 6rem;
+    }
+
+    .confirm-icon {
+      width: 80px; height: 80px;
+      border-radius: 50%;
+      border: 2px solid var(--gold-dim);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      margin: 0 auto 2rem;
+      background: rgba(201,168,76,0.08);
+      animation: pulse-gold 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse-gold {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(201,168,76,0); }
+      50% { box-shadow: 0 0 0 12px rgba(201,168,76,0.08); }
+    }
+
+    .confirm-heading {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+
+    .confirm-heading .display-lg {
+      margin: 0.5rem 0;
+    }
+
+    .confirm-heading p {
+      color: var(--white-dim);
+      font-size: 0.92rem;
+    }
+
+    .confirmation-id {
+      text-align: center;
+      background: rgba(201,168,76,0.07);
+      border: 1px solid var(--gold-dim);
+      border-radius: var(--radius);
+      padding: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .confirmation-id .label {
+      font-size: 0.6rem;
+      font-weight: 600;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: var(--white-faint);
+    }
+
+    .confirmation-id .id-number {
+      font-family: var(--font-display);
+      font-size: 1.6rem;
+      color: var(--gold);
+      letter-spacing: 0.1em;
+      margin-top: 0.25rem;
+    }
+
+    .detail-card {
+      background: var(--black-card);
+      border: 1px solid var(--black-border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+
+    .detail-card-header {
+      padding: 1rem 1.5rem;
+      background: rgba(201,168,76,0.05);
+      border-bottom: 1px solid var(--black-border);
+      font-size: 0.62rem;
+      font-weight: 600;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--gold);
+    }
+
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 0.9rem 1.5rem;
+      border-bottom: 1px solid var(--black-border);
+    }
+
+    .detail-row:last-child { border-bottom: none; }
+
+    .detail-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--white-dim);
+      flex-shrink: 0;
+      min-width: 100px;
+    }
+
+    .detail-value {
+      font-size: 0.88rem;
+      color: var(--white);
+      text-align: right;
+    }
+
+    .amount-paid {
+      font-family: var(--font-display);
+      font-size: 1.4rem;
+      color: var(--gold);
+    }
+
+    .next-steps {
+      background: var(--black-card);
+      border: 1px solid var(--black-border);
+      border-radius: var(--radius-lg);
+      padding: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    .next-steps h3 {
+      font-family: var(--font-display);
+      font-size: 1.2rem;
+      font-weight: 400;
+      margin-bottom: 1.2rem;
+      color: var(--white);
+    }
+
+    .next-steps ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+    }
+
+    .next-steps li {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.7rem;
+      font-size: 0.85rem;
+      color: var(--white-dim);
+      line-height: 1.6;
+    }
+
+    .next-steps li::before {
+      content: '⚜';
+      color: var(--gold-dim);
+      font-size: 0.7rem;
+      margin-top: 0.22rem;
+      flex-shrink: 0;
+    }
+
+    .confirm-actions {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      margin-top: 2.5rem;
+      flex-wrap: wrap;
+    }
+
+    .print-btn {
+      background: none;
+      border: 1px solid var(--black-border);
+      color: var(--white-dim);
+      font-family: var(--font-body);
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      padding: 0.8rem 1.8rem;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+
+    .print-btn:hover {
+      border-color: var(--white-dim);
+      color: var(--white);
+    }
+
+    @media print {
+      .nav, footer, .confirm-actions { display: none !important; }
+      body { background: white; color: black; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navigation -->
+  <nav class="nav scrolled" role="navigation" aria-label="Main navigation">
+    <a href="index.html" class="nav-logo" aria-label="NOLA Premier Limo Home">
+      NOLA <span>Premier</span>
+    </a>
+  </nav>
+
+  <!-- Page Header -->
+  <header class="page-header">
+    <div class="container">
+      <div class="progress-steps" role="navigation" aria-label="Booking progress">
+        <div class="step done">
+          <div class="step-num">✓</div>
+          <div class="step-label">Schedule</div>
+        </div>
+        <div class="step-line done"></div>
+        <div class="step done">
+          <div class="step-num">✓</div>
+          <div class="step-label">Payment</div>
+        </div>
+        <div class="step-line done"></div>
+        <div class="step active" aria-current="step">
+          <div class="step-num">✓</div>
+          <div class="step-label">Confirmed</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main-content">
+    <div class="container">
+      <div class="confirmation-wrap">
+
+        <div class="confirm-icon" role="img" aria-label="Booking confirmed">✓</div>
+
+        <div class="confirm-heading">
+          <span class="section-label">You're Confirmed</span>
+          <h1 class="display-lg">Your Ride is <em>Reserved</em></h1>
+          <p>A confirmation has been sent to your email address. We look forward to serving you.</p>
+        </div>
+
+        <div class="confirmation-id" aria-label="Confirmation number">
+          <div class="label">Confirmation Number</div>
+          <div class="id-number" id="conf-id">—</div>
+        </div>
+
+        <!-- Trip Details -->
+        <div class="detail-card">
+          <div class="detail-card-header">Trip Details</div>
+          <div class="detail-row">
+            <span class="detail-label">Service</span>
+            <span class="detail-value" id="conf-service">—</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Date</span>
+            <span class="detail-value" id="conf-date">—</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Time</span>
+            <span class="detail-value" id="conf-time">—</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Passengers</span>
+            <span class="detail-value" id="conf-passengers">—</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Pickup</span>
+            <span class="detail-value" id="conf-pickup">—</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Drop-off</span>
+            <span class="detail-value" id="conf-dropoff">—</span>
+          </div>
+        </div>
+
+        <!-- Guest + Payment -->
+        <div class="detail-card">
+          <div class="detail-card-header">Guest &amp; Payment</div>
+          <div class="detail-row">
+            <span class="detail-label">Guest</span>
+            <span class="detail-value" id="conf-name">—</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Email</span>
+            <span class="detail-value" id="conf-email">—</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Amount Paid</span>
+            <span class="detail-value amount-paid" id="conf-amount">—</span>
+          </div>
+        </div>
+
+        <!-- Next Steps -->
+        <div class="next-steps" role="region" aria-labelledby="next-steps-heading">
+          <h3 id="next-steps-heading">What Happens Next</h3>
+          <ul role="list">
+            <li>A confirmation email has been sent with your full itinerary and receipt.</li>
+            <li>Your booking has been added to the driver's calendar — you will receive a reminder 24 hours before your ride.</li>
+            <li>Your driver will arrive 10 minutes early. For airport pickups, we track your flight in real time.</li>
+            <li>Questions or changes? Call or text <strong style="color:var(--white)">(504) 123-4567</strong> any time.</li>
+          </ul>
+        </div>
+
+        <!-- Actions -->
+        <div class="confirm-actions">
+          <a href="index.html" class="btn btn-outline">Back to Home</a>
+          <button class="print-btn" onclick="window.print()" aria-label="Print this confirmation">
+            Print Confirmation
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer" role="contentinfo">
+    <div class="container">
+      <div class="footer-bottom">
+        <p>© 2025 NOLA Premier Limo. All rights reserved.</p>
+        <p><a href="tel:+15041234567">(504) 123-4567</a></p>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+  // ═══════════════════════════════════════════════════════════════
+  //  CONFIRMATION PAGE
+  //  Security: Uses textContent throughout — no innerHTML.
+  //  Clears sessionStorage after reading to limit exposure.
+  // ═══════════════════════════════════════════════════════════════
+
+  function setText(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value || '—';
+  }
+
+  try {
+    const raw = sessionStorage.getItem('confirmationData');
+    if (!raw) throw new Error('No confirmation data');
+
+    const conf = JSON.parse(raw);
+
+    // Populate — textContent only, never innerHTML
+    setText('conf-id',         conf.confirmationId);
+    setText('conf-service',    conf.serviceName);
+    setText('conf-date',       conf.date);
+    setText('conf-time',       conf.time);
+    setText('conf-passengers', conf.passengers
+      ? `${conf.passengers} passenger${conf.passengers > 1 ? 's' : ''}` : '—');
+    setText('conf-pickup',     conf.pickup);
+    setText('conf-dropoff',    conf.dropoff);
+    setText('conf-name',       `${conf.firstName} ${conf.lastName}`);
+    setText('conf-email',      conf.email);
+    setText('conf-amount',     conf.amountPaid
+      ? `$${parseFloat(conf.amountPaid).toFixed(2)}` : 'Quoted on invoice');
+
+    // Clear sensitive session data after populating
+    sessionStorage.removeItem('confirmationData');
+
+  } catch {
+    // If no confirmation data, redirect home (likely direct URL access)
+    document.querySelector('.confirmation-wrap').innerHTML = `
+      <div style="text-align:center;padding:4rem 0">
+        <p style="color:var(--white-dim)">No confirmation found. 
+        <a href="index.html">Return to home</a></p>
+      </div>
+    `;
+  }
+  </script>
+</body>
+</html>
