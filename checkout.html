@@ -429,7 +429,7 @@
 
       if (!window.Square) throw new Error('Square SDK not loaded');
 
-      const payments = Square.payments(config.applicationId, config.locationId);
+      const payments = await Square.payments(config.applicationId, config.locationId);
 
       card = await payments.card({
         style: {
