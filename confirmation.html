@@ -310,7 +310,24 @@
 
       </div>
     </div>
-  </main>
+  
+<!-- Netlify Forms: booking capture (submitted via JS on page load) -->
+<form name="booking-submission" data-netlify="true" netlify hidden aria-hidden="true">
+  <input type="hidden" name="form-name" value="booking-submission" />
+  <input type="hidden" name="confirmation-id" />
+  <input type="hidden" name="service" />
+  <input type="hidden" name="date" />
+  <input type="hidden" name="time" />
+  <input type="hidden" name="passengers" />
+  <input type="hidden" name="pickup" />
+  <input type="hidden" name="dropoff" />
+  <input type="hidden" name="guest-name" />
+  <input type="hidden" name="email" />
+  <input type="hidden" name="phone" />
+  <input type="hidden" name="amount-paid" />
+  <input type="hidden" name="notes" />
+</form>
+</main>
 
   <footer class="footer" role="contentinfo">
     <div class="container">
@@ -354,7 +371,30 @@
       ? `$${parseFloat(conf.amountPaid).toFixed(2)}` : 'Quoted on invoice');
 
     // Clear sensitive session data after populating
-    sessionStorage.removeItem('confirmationData');
+        // Silently capture booking in Netlify Forms
+    try {
+      fetch('/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          'form-name': 'booking-submission',
+          'confirmation-id': conf.confirmationId || '',
+          'service': conf.serviceName || '',
+          'date': conf.date || '',
+          'time': conf.time || '',
+          'passengers': String(conf.passengers || ''),
+          'pickup': conf.pickup || '',
+          'dropoff': conf.dropoff || '',
+          'guest-name': ((conf.firstName || '') + ' ' + (conf.lastName || '')).trim(),
+          'email': conf.email || '',
+          'phone': conf.phone || '',
+          'amount-paid': conf.amountPaid ? '$' + parseFloat(conf.amountPaid).toFixed(2) : '',
+          'notes': conf.notes || ''
+        }).toString()
+      }).catch(function(){}); // non-fatal
+    } catch(e) {}
+
+sessionStorage.removeItem('confirmationData');
 
   } catch {
     // If no confirmation data, redirect home (likely direct URL access)
