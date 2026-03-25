@@ -563,7 +563,19 @@
       .pricing-grid { grid-template-columns: 1fr; }
       .pricing-grid-bottom { grid-template-columns: 1fr; }
     }
-  </style>
+  
+/* ── Contact Form ── */
+.contact-form { max-width: 640px; margin: 3rem auto 0; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin-bottom: 1.2rem; }
+.form-group { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.2rem; }
+.form-row .form-group { margin-bottom: 0; }
+.form-group label { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--white-dim); }
+.form-group input, .form-group select, .form-group textarea { background: var(--black-card); border: 1px solid var(--black-border); border-radius: var(--radius); padding: 0.85rem 1rem; color: var(--white); font-family: var(--font-body); font-size: 0.88rem; transition: border-color var(--transition); width: 100%; box-sizing: border-box; }
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: var(--gold-dim); }
+.form-group select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23888' d='M6 8L0 0h12z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 1rem center; padding-right: 2.5rem; cursor: pointer; }
+.form-group textarea { resize: vertical; min-height: 110px; }
+@media (max-width: 600px) { .form-row { grid-template-columns: 1fr; } }
+</style>
 </head>
 <body>
 
@@ -882,7 +894,57 @@
     </div>
   </section>
 
-  <!-- Footer -->
+  
+<!-- Contact -->
+<section class="section" id="contact" aria-labelledby="contact-heading">
+  <div class="container">
+    <div class="fade-in" style="text-align:center">
+      <span class="section-label">Get in Touch</span>
+      <div class="gold-rule center"></div>
+      <h2 class="display-lg" id="contact-heading">Request a<br /><em>Custom Quote</em></h2>
+      <p style="color:var(--white-dim);max-width:460px;margin:1rem auto 0;font-size:0.9rem">Multi-day trips, out-of-area travel, or anything that deserves a personal touch. We respond within 2 hours.</p>
+    </div>
+    <form name="contact" method="POST" data-netlify="true" netlify-honeypot="bot-field" class="contact-form fade-in" style="transition-delay:0.15s" aria-label="Contact form">
+      <input type="hidden" name="form-name" value="contact" />
+      <p hidden aria-hidden="true"><label>Don't fill this out: <input name="bot-field" /></label></p>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="contact-name">Full Name</label>
+          <input type="text" id="contact-name" name="name" required placeholder="Your name" autocomplete="name" />
+        </div>
+        <div class="form-group">
+          <label for="contact-email">Email</label>
+          <input type="email" id="contact-email" name="email" required placeholder="you@example.com" autocomplete="email" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="contact-phone">Phone</label>
+          <input type="tel" id="contact-phone" name="phone" placeholder="(504) 000-0000" autocomplete="tel" />
+        </div>
+        <div class="form-group">
+          <label for="contact-service">Service Interest</label>
+          <select id="contact-service" name="service">
+            <option value="">Select a service…</option>
+            <option value="airport">Airport Transfer</option>
+            <option value="corporate">Corporate Travel</option>
+            <option value="event">Special Events / Wedding</option>
+            <option value="hourly">Hourly Charter</option>
+            <option value="custom">Custom / Multi-Day Trip</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="contact-message">Tell Us About Your Trip</label>
+        <textarea id="contact-message" name="message" rows="4" placeholder="Dates, destinations, group size, special requests…"></textarea>
+      </div>
+      <div style="text-align:center;margin-top:2rem">
+        <button type="submit" class="btn btn-primary">Send Inquiry</button>
+      </div>
+    </form>
+  </div>
+</section>
+<!-- Footer -->
   <footer class="footer" role="contentinfo">
     <div class="container">
       <div class="footer-grid">
