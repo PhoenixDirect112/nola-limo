@@ -1,4 +1,4 @@
-// netlify/functions/availability.js
+—// netlify/functions/availability.js
 // ─────────────────────────────────────────────────────────────────
 //  GET /api/availability?year=2025&month=6
 //  Fetches busy times from the driver's Outlook calendar via
