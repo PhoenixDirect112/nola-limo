@@ -395,6 +395,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           serviceType: booking.serviceType,
+            serviceName: booking.serviceName,  // FIX: pass service name so process-payment.js can use it
           pickup:      booking.pickup,
           dropoff:     booking.dropoff,
           passengers:  booking.passengers
