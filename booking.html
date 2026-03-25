@@ -501,292 +501,222 @@
   </footer>
 
   <script>
-  // ═══════════════════════════════════════════════════════════════
-  //  BOOKING PAGE — Calendar + Form Logic
-  //  Security: All inputs sanitized; no sensitive data in sessionStorage
-  //  as plain text (only non-sensitive booking metadata).
-  //  Actual payment data never touches this page.
-  // ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
+// BOOKING PAGE — Calendar + Form Logic (FIXED)
+// ═══════════════════════════════════════════════════════════════
 
-  // ── Security: sanitize text before DOM insertion ─────────────
-  function sanitizeText(str) {
-    const el = document.createElement('div');
-    el.textContent = String(str || '');
-    return el.innerHTML;
+function sanitizeText(str) {
+  const el = document.createElement('div');
+  el.textContent = String(str || '');
+  return el.innerHTML;
+}
+
+// FIX: Track year and month as separate integers — avoids Date mutation overflow
+// (e.g. old code: March 31 .setMonth(1) → March 3 since Feb has no 31st)
+let viewYear  = new Date().getFullYear();
+let viewMonth = new Date().getMonth();
+let selectedDate = null;
+let selectedTime = null;
+let bookedSlots  = {};
+
+// FIX: Require at least 4 hours advance notice
+const MIN_ADVANCE_HOURS = 4;
+
+const MONTHS = ['January','February','March','April','May','June',
+  'July','August','September','October','November','December'];
+const ALL_TIMES = ['06:00','07:00','08:00','09:00','10:00','11:00',
+  '12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00'];
+
+function toDateKey(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function formatDisplayDate(d) {
+  return d.toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+}
+function formatTime(t) {
+  const [h, m] = t.split(':').map(Number);
+  return `${h % 12 || 12}:${String(m).padStart(2,'0')} ${h >= 12 ? 'PM' : 'AM'}`;
+}
+
+async function fetchAvailability(year, month) {
+  try {
+    const res = await fetch(`/api/availability?year=${year}&month=${month + 1}`, { method: 'GET', credentials: 'same-origin' });
+    if (!res.ok) throw new Error('Network response was not ok');
+    const data = await res.json();
+    return data.bookedSlots || {};
+  } catch { return {}; }
+}
+
+async function renderCalendar(year, month) {
+  const grid  = document.getElementById('cal-grid');
+  const label = document.getElementById('cal-month-label');
+  label.textContent = `${MONTHS[month]} ${year}`;
+  grid.innerHTML = `<div class="cal-loading" aria-live="polite"><span class="spinner"></span> Checking availability…</div>`;
+  bookedSlots = await fetchAvailability(year, month);
+  grid.innerHTML = '';
+  const firstDay    = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const today = new Date(); today.setHours(0,0,0,0);
+  const nowPlusAdvance = new Date(Date.now() + MIN_ADVANCE_HOURS * 60 * 60 * 1000);
+
+  for (let i = 0; i < firstDay; i++) {
+    const empty = document.createElement('button');
+    empty.className = 'cal-day empty';
+    empty.setAttribute('aria-hidden','true');
+    empty.setAttribute('tabindex','-1');
+    grid.appendChild(empty);
   }
 
-  // ── State ────────────────────────────────────────────────────
-  let currentDate    = new Date();
-  let selectedDate   = null;
-  let selectedTime   = null;
-  let bookedSlots    = {};   // { 'YYYY-MM-DD': ['09:00','10:00'] }
-
-  const MONTHS = ['January','February','March','April','May','June',
-                  'July','August','September','October','November','December'];
-
-  const ALL_TIMES = [
-    '06:00','07:00','08:00','09:00','10:00','11:00',
-    '12:00','13:00','14:00','15:00','16:00','17:00',
-    '18:00','19:00','20:00','21:00'
-  ];
-
-  // ── Format helpers ───────────────────────────────────────────
-  function toDateKey(d) {
-    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-  }
-
-  function formatDisplayDate(d) {
-    return d.toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
-  }
-
-  function formatTime(t) {
-    const [h, m] = t.split(':').map(Number);
-    const ampm = h >= 12 ? 'PM' : 'AM';
-    const hour = h % 12 || 12;
-    return `${hour}:${String(m).padStart(2,'0')} ${ampm}`;
-  }
-
-  // ── Fetch booked slots from our Netlify function ─────────────
-  async function fetchAvailability(year, month) {
-    try {
-      const res = await fetch(
-        `/api/availability?year=${year}&month=${month + 1}`,
-        { method: 'GET', credentials: 'same-origin' }
-      );
-      if (!res.ok) throw new Error('Network response was not ok');
-      const data = await res.json();
-      // data.bookedSlots: { 'YYYY-MM-DD': ['HH:MM', ...] }
-      return data.bookedSlots || {};
-    } catch {
-      // Fail silently: show all dates as available, don't break booking
-      return {};
-    }
-  }
-
-  // ── Render calendar ──────────────────────────────────────────
-  async function renderCalendar(year, month) {
-    const grid  = document.getElementById('cal-grid');
-    const label = document.getElementById('cal-month-label');
-
-    label.textContent = `${MONTHS[month]} ${year}`;
-    grid.innerHTML    = `<div class="cal-loading" aria-live="polite"><span class="spinner"></span> Checking availability…</div>`;
-
-    bookedSlots = await fetchAvailability(year, month);
-
-    grid.innerHTML = '';
-
-    const firstDay   = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const today      = new Date();
-    today.setHours(0,0,0,0);
-
-    // Empty cells before first day
-    for (let i = 0; i < firstDay; i++) {
-      const empty = document.createElement('button');
-      empty.className = 'cal-day empty';
-      empty.setAttribute('aria-hidden', 'true');
-      empty.setAttribute('tabindex', '-1');
-      grid.appendChild(empty);
-    }
-
-    for (let day = 1; day <= daysInMonth; day++) {
-      const date    = new Date(year, month, day);
-      const key     = toDateKey(date);
-      const isPast  = date < today;
-      const isToday = toDateKey(date) === toDateKey(today);
-      const isSel   = selectedDate && toDateKey(selectedDate) === key;
-
-      // A day is fully booked if ALL time slots are taken
-      const dayBooked = bookedSlots[key] && bookedSlots[key].length >= ALL_TIMES.length;
-
-      const btn = document.createElement('button');
-      btn.className = 'cal-day';
-      btn.textContent = day;
-      btn.setAttribute('aria-label', `${MONTHS[month]} ${day}, ${year}`);
-
-      if (isPast || dayBooked) {
-        btn.classList.add('disabled');
-        btn.setAttribute('aria-disabled', 'true');
-        if (dayBooked) btn.classList.add('booked');
-        btn.setAttribute('tabindex', '-1');
-      } else {
-        if (isToday) btn.classList.add('today');
-        if (isSel) btn.classList.add('selected');
-        btn.addEventListener('click', () => selectDate(date));
-        btn.setAttribute('role', 'gridcell');
-      }
-      grid.appendChild(btn);
-    }
-  }
-
-  // ── Date selection ───────────────────────────────────────────
-  function selectDate(date) {
-    selectedDate = date;
-    selectedTime = null;
-    renderCalendar(date.getFullYear(), date.getMonth());
-    renderTimeSlots(date);
-    updateSummary();
-    checkContinue();
-  }
-
-  // ── Render time slots ────────────────────────────────────────
-  function renderTimeSlots(date) {
-    const section = document.getElementById('time-section');
-    const grid    = document.getElementById('time-grid');
-    const key     = toDateKey(date);
+  for (let day = 1; day <= daysInMonth; day++) {
+    const date = new Date(year, month, day);
+    const key  = toDateKey(date);
+    const isPast  = date < today;
+    const isToday = toDateKey(date) === toDateKey(today);
+    const isSel   = selectedDate && toDateKey(selectedDate) === key;
     const taken   = bookedSlots[key] || [];
-
-    section.style.display = 'block';
-    grid.innerHTML = '';
-
-    ALL_TIMES.forEach(t => {
-      const isUnavail = taken.includes(t);
-      const btn = document.createElement('button');
-      btn.className  = `time-slot${isUnavail ? ' unavailable' : ''}`;
-      btn.textContent = formatTime(t);
-      btn.setAttribute('aria-label', isUnavail ? `${formatTime(t)} — unavailable` : formatTime(t));
-      if (isUnavail) {
-        btn.setAttribute('aria-disabled', 'true');
-        btn.setAttribute('tabindex', '-1');
-      } else {
-        btn.addEventListener('click', () => selectTime(t, btn));
-      }
-      grid.appendChild(btn);
+    // FIX: a day is fully blocked if no slots pass both the booked check AND the advance-notice check
+    const available = ALL_TIMES.filter(t => {
+      if (taken.includes(t)) return false;
+      const [h, m] = t.split(':').map(Number);
+      return new Date(year, month, day, h, m) >= nowPlusAdvance;
     });
-  }
+    const dayFullyBlocked = !isPast && available.length === 0;
 
-  // ── Time selection ───────────────────────────────────────────
-  function selectTime(time, btn) {
-    document.querySelectorAll('.time-slot').forEach(b => b.classList.remove('selected'));
-    btn.classList.add('selected');
-    selectedTime = time;
-    updateSummary();
-    checkContinue();
-  }
+    const btn = document.createElement('button');
+    btn.className = 'cal-day';
+    btn.textContent = day;
+    btn.setAttribute('aria-label', `${MONTHS[month]} ${day}, ${year}`);
 
-  // ── Update booking summary panel ─────────────────────────────
-  function updateSummary() {
-    const summary  = document.getElementById('selection-summary');
-    const sumDate  = document.getElementById('sum-date');
-    const sumTime  = document.getElementById('sum-time');
-    const sumSvc   = document.getElementById('sum-service');
-    const svcEl    = document.getElementById('service-type');
-
-    if (selectedDate || selectedTime) {
-      summary.classList.add('visible');
+    if (isPast || dayFullyBlocked) {
+      btn.classList.add('disabled');
+      btn.setAttribute('aria-disabled','true');
+      if (dayFullyBlocked && !isPast) btn.classList.add('booked');
+      btn.setAttribute('tabindex','-1');
+    } else {
+      if (isToday) btn.classList.add('today');
+      if (isSel)   btn.classList.add('selected');
+      btn.addEventListener('click', () => selectDate(date));
+      btn.setAttribute('role','gridcell');
     }
-
-    sumDate.textContent = selectedDate ? formatDisplayDate(selectedDate) : '—';
-    sumTime.textContent = selectedTime ? formatTime(selectedTime) : '—';
-    sumSvc.textContent  = svcEl.value
-      ? svcEl.options[svcEl.selectedIndex].text
-      : '—';
+    grid.appendChild(btn);
   }
 
-  // ── Enable / disable continue button ─────────────────────────
-  function checkContinue() {
-    const btn   = document.getElementById('continue-btn');
-    const fname = document.getElementById('first-name').value.trim();
-    const lname = document.getElementById('last-name').value.trim();
-    const email = document.getElementById('email').value.trim();
-    const phone = document.getElementById('phone').value.trim();
-    const svc   = document.getElementById('service-type').value;
-    const pick  = document.getElementById('pickup').value.trim();
-    const drop  = document.getElementById('dropoff').value.trim();
-    const pass  = document.getElementById('passengers').value;
+  // FIX: disable prev button when already on current month
+  const now = new Date();
+  const prevBtn = document.getElementById('prev-month');
+  const atCurrent = year === now.getFullYear() && month === now.getMonth();
+  prevBtn.disabled = atCurrent;
+  prevBtn.style.opacity = atCurrent ? '0.3' : '';
+  prevBtn.style.cursor  = atCurrent ? 'not-allowed' : '';
+}
 
-    const ready = selectedDate && selectedTime && fname && lname
-                  && email && phone && svc && pick && drop && pass;
-    btn.disabled = !ready;
-  }
+function selectDate(date) {
+  selectedDate = date; selectedTime = null;
+  renderCalendar(date.getFullYear(), date.getMonth());
+  renderTimeSlots(date);
+  updateSummary(); checkContinue();
+}
 
-  // ── Input validation ──────────────────────────────────────────
-  function validateEmail(email) {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  }
-
-  function validatePhone(phone) {
-    return /^[\d\s\-\(\)\+]{7,20}$/.test(phone);
-  }
-
-  // ── Continue → Checkout ───────────────────────────────────────
-  document.getElementById('continue-btn').addEventListener('click', () => {
-    const errorEl = document.getElementById('booking-error');
-    errorEl.style.display = 'none';
-
-    // Validate
-    const email = document.getElementById('email').value.trim();
-    const phone = document.getElementById('phone').value.trim();
-
-    if (!validateEmail(email)) {
-      errorEl.textContent = 'Please enter a valid email address.';
-      errorEl.style.display = 'block';
-      document.getElementById('email').focus();
-      return;
-    }
-
-    if (!validatePhone(phone)) {
-      errorEl.textContent = 'Please enter a valid phone number.';
-      errorEl.style.display = 'block';
-      document.getElementById('phone').focus();
-      return;
-    }
-
-    // Store only non-sensitive booking metadata in sessionStorage
-    // Payment data is handled exclusively by Square on the next page
-    const booking = {
-      date:        toDateKey(selectedDate),
-      displayDate: formatDisplayDate(selectedDate),
-      time:        selectedTime,
-      displayTime: formatTime(selectedTime),
-      serviceType: document.getElementById('service-type').value,
-      serviceName: document.getElementById('service-type').options[
-                     document.getElementById('service-type').selectedIndex
-                   ].text,
-      firstName:   document.getElementById('first-name').value.trim(),
-      lastName:    document.getElementById('last-name').value.trim(),
-      email:       email,
-      phone:       phone,
-      pickup:      document.getElementById('pickup').value.trim(),
-      dropoff:     document.getElementById('dropoff').value.trim(),
-      passengers:  document.getElementById('passengers').value,
-      notes:       document.getElementById('notes').value.trim().slice(0, 500),
-      // CSRF-like nonce to validate on checkout page
-      nonce:       crypto.randomUUID(),
-      expires:     Date.now() + 30 * 60 * 1000  // 30 min session
-    };
-
-    sessionStorage.setItem('bookingData', JSON.stringify(booking));
-    window.location.href = 'checkout.html';
+function renderTimeSlots(date) {
+  const section = document.getElementById('time-section');
+  const grid    = document.getElementById('time-grid');
+  const key     = toDateKey(date);
+  const taken   = bookedSlots[key] || [];
+  const nowPlusAdvance = new Date(Date.now() + MIN_ADVANCE_HOURS * 60 * 60 * 1000);
+  section.style.display = 'block';
+  grid.innerHTML = '';
+  ALL_TIMES.forEach(t => {
+    const [h, m] = t.split(':').map(Number);
+    const slotDT    = new Date(date.getFullYear(), date.getMonth(), date.getDate(), h, m);
+    // FIX: mark slot unavailable if booked OR within the advance-notice window
+    const isTooSoon = slotDT < nowPlusAdvance;
+    const isUnavail = taken.includes(t) || isTooSoon;
+    const btn = document.createElement('button');
+    btn.className = `time-slot${isUnavail ? ' unavailable' : ''}`;
+    btn.textContent = formatTime(t);
+    btn.setAttribute('aria-label', formatTime(t) + (taken.includes(t) ? ' — booked' : isTooSoon ? ' — too soon to book' : ''));
+    if (isUnavail) { btn.setAttribute('aria-disabled','true'); btn.setAttribute('tabindex','-1'); }
+    else btn.addEventListener('click', () => selectTime(t, btn));
+    grid.appendChild(btn);
   });
+}
 
-  // ── Month navigation ──────────────────────────────────────────
-  document.getElementById('prev-month').addEventListener('click', () => {
-    const today = new Date();
-    if (currentDate.getFullYear() === today.getFullYear() &&
-        currentDate.getMonth() === today.getMonth()) return;
-    currentDate.setMonth(currentDate.getMonth() - 1);
-    renderCalendar(currentDate.getFullYear(), currentDate.getMonth());
-  });
+function selectTime(time, btn) {
+  document.querySelectorAll('.time-slot').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  selectedTime = time;
+  updateSummary(); checkContinue();
+}
 
-  document.getElementById('next-month').addEventListener('click', () => {
-    currentDate.setMonth(currentDate.getMonth() + 1);
-    renderCalendar(currentDate.getFullYear(), currentDate.getMonth());
-  });
+function updateSummary() {
+  const summary = document.getElementById('selection-summary');
+  const svcEl   = document.getElementById('service-type');
+  if (selectedDate || selectedTime) summary.classList.add('visible');
+  document.getElementById('sum-date').textContent = selectedDate ? formatDisplayDate(selectedDate) : '—';
+  document.getElementById('sum-time').textContent = selectedTime ? formatTime(selectedTime) : '—';
+  document.getElementById('sum-service').textContent = svcEl.value ? svcEl.options[svcEl.selectedIndex].text : '—';
+}
 
-  // ── Watch form fields for live validation ─────────────────────
-  ['first-name','last-name','email','phone','service-type','pickup','dropoff','passengers']
-    .forEach(id => {
-      document.getElementById(id).addEventListener('input', () => {
-        checkContinue();
-        updateSummary();
-      });
-    });
+function checkContinue() {
+  const btn = document.getElementById('continue-btn');
+  const ready = selectedDate && selectedTime &&
+    document.getElementById('first-name').value.trim() &&
+    document.getElementById('last-name').value.trim() &&
+    document.getElementById('email').value.trim() &&
+    document.getElementById('phone').value.trim() &&
+    document.getElementById('service-type').value &&
+    document.getElementById('pickup').value.trim() &&
+    document.getElementById('dropoff').value.trim() &&
+    document.getElementById('passengers').value;
+  btn.disabled = !ready;
+}
 
-  document.getElementById('service-type').addEventListener('change', updateSummary);
+function validateEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
+function validatePhone(phone)  { return /^[\d\s\-\(\)\+]{7,20}$/.test(phone); }
 
-  // ── Initial render ────────────────────────────────────────────
-  renderCalendar(currentDate.getFullYear(), currentDate.getMonth());
-  </script>
+document.getElementById('continue-btn').addEventListener('click', () => {
+  const errorEl = document.getElementById('booking-error');
+  errorEl.style.display = 'none';
+  const email = document.getElementById('email').value.trim();
+  const phone = document.getElementById('phone').value.trim();
+  if (!validateEmail(email)) { errorEl.textContent = 'Please enter a valid email address.'; errorEl.style.display = 'block'; document.getElementById('email').focus(); return; }
+  if (!validatePhone(phone))  { errorEl.textContent = 'Please enter a valid phone number.'; errorEl.style.display = 'block'; document.getElementById('phone').focus(); return; }
+  const svcEl = document.getElementById('service-type');
+  const booking = {
+    date: toDateKey(selectedDate), displayDate: formatDisplayDate(selectedDate),
+    time: selectedTime, displayTime: formatTime(selectedTime),
+    serviceType: svcEl.value, serviceName: svcEl.options[svcEl.selectedIndex].text,
+    firstName: document.getElementById('first-name').value.trim(),
+    lastName:  document.getElementById('last-name').value.trim(),
+    email, phone,
+    pickup:     document.getElementById('pickup').value.trim(),
+    dropoff:    document.getElementById('dropoff').value.trim(),
+    passengers: document.getElementById('passengers').value,
+    notes:      document.getElementById('notes').value.trim().slice(0, 500),
+    nonce:   crypto.randomUUID(),
+    expires: Date.now() + 30 * 60 * 1000
+  };
+  sessionStorage.setItem('bookingData', JSON.stringify(booking));
+  window.location.href = 'checkout.html';
+});
+
+// FIX: use integer year/month instead of mutating a Date object
+document.getElementById('prev-month').addEventListener('click', () => {
+  const now = new Date();
+  if (viewYear === now.getFullYear() && viewMonth === now.getMonth()) return;
+  if (viewMonth === 0) { viewYear--; viewMonth = 11; } else { viewMonth--; }
+  renderCalendar(viewYear, viewMonth);
+});
+document.getElementById('next-month').addEventListener('click', () => {
+  if (viewMonth === 11) { viewYear++; viewMonth = 0; } else { viewMonth++; }
+  renderCalendar(viewYear, viewMonth);
+});
+
+['first-name','last-name','email','phone','service-type','pickup','dropoff','passengers']
+  .forEach(id => { document.getElementById(id).addEventListener('input', () => { checkContinue(); updateSummary(); }); });
+document.getElementById('service-type').addEventListener('change', updateSummary);
+
+renderCalendar(viewYear, viewMonth);
+</script>
 </body>
 </html>
