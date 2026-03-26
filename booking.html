@@ -803,25 +803,31 @@ renderCalendar(viewYear, viewMonth);
   }
 
   function fetchSuggestions(query, list, input) {
-    var url = 'https://nominatim.openstreetmap.org/search?format=json&limit=6&addressdetails=1&q='
+    var url = 'https://photon.komoot.io/api/?q='
               + encodeURIComponent(query)
-              + '&countrycodes=us&viewbox=-90.5,29.7,-89.7,30.2&bounded=0';
-    fetch(url, { headers: { 'Accept-Language': 'en' } })
+              + '&limit=6&lang=en&lat=29.9511&lon=-90.0715';
+    fetch(url)
       .then(function(r) { return r.json(); })
-      .then(function(results) {
+      .then(function(data) {
         list.innerHTML = '';
-        if (!results.length) { list.style.display = 'none'; return; }
-        results.forEach(function(r) {
+        var features = data.features || [];
+        if (!features.length) { list.style.display = 'none'; return; }
+        features.forEach(function(f) {
+          var p = f.properties || {};
+          var parts = [p.name, p.housenumber, p.street, p.city, p.state, p.postcode].filter(Boolean);
+          if (!parts.length) return;
+          var label = parts.join(', ');
           var li = document.createElement('li');
-          li.textContent = r.display_name;
+          li.textContent = label;
           li.addEventListener('click', function() {
-            input.value = r.display_name;
+            input.value = label;
             list.style.display = 'none';
             input.dispatchEvent(new Event('change'));
           });
           list.appendChild(li);
         });
-        list.style.display = 'block';
+        if (list.children.length) list.style.display = 'block';
+        else list.style.display = 'none';
       })
       .catch(function() { list.style.display = 'none'; });
   }
