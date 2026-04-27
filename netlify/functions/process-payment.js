@@ -50,7 +50,7 @@ async function chargeSquare(sourceId, amountCents, bookingData, idempotencyKey) 
       amount_money: { amount: amountCents, currency: 'USD' },
       location_id: SQUARE_LOCATION_ID,
       // FIX: use formatted displayDate + displayTime instead of raw ISO string
-      note: `NOLA Premier Limo — ${bookingData.serviceName} — ${bookingData.displayDate} at ${bookingData.displayTime}`,
+      note: `WMS Delivery Services LLC — ${bookingData.serviceName} — ${bookingData.displayDate} at ${bookingData.displayTime}`,
       buyer_email_address: bookingData.email,
     }
   );
