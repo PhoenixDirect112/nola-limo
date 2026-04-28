@@ -8,7 +8,7 @@
 
 const PRICES = {
   airport:    9000,  // $90.00
-  corporate: 35000,  // $350.00
+  corporate: 96000,  // $960.00
   wedding:   35000,  // $350.00
   event:     20000,  // $200.00
   hourly:    12000,  // $120.00/hr base
