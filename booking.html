@@ -240,6 +240,12 @@
       text-decoration: line-through;
     }
 
+    .time-slot.late-night {
+      font-style: italic;
+      border-style: dashed;
+    }
+    .time-slot.late-night.selected { font-style: normal; }
+
     /* ── Booking Form ── */
     .booking-form {
       background: var(--black-card);
@@ -525,7 +531,8 @@ const MIN_ADVANCE_HOURS = 4;
 const MONTHS = ['January','February','March','April','May','June',
   'July','August','September','October','November','December'];
 const ALL_TIMES = ['06:00','07:00','08:00','09:00','10:00','11:00',
-  '12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00'];
+  '12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00',
+  '22:00','23:00','00:00'];
 
 function toDateKey(d) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -536,6 +543,26 @@ function formatDisplayDate(d) {
 function formatTime(t) {
   const [h, m] = t.split(':').map(Number);
   return `${h % 12 || 12}:${String(m).padStart(2,'0')} ${h >= 12 ? 'PM' : 'AM'}`;
+}
+
+// "End-of-day" semantics for 12:00 AM:
+// When the customer picks "Tuesday → 12:00 AM", the actual pickup is at midnight at the
+// END of Tuesday — i.e. 00:00 on Wednesday. resolveSlot returns the canonical lookup key
+// (the calendar day the booking actually lands on) and the real pickup datetime.
+const LATE_NIGHT_TIME = '00:00';
+
+function resolveSlot(year, month, day, t) {
+  const [h, m] = t.split(':').map(Number);
+  if (t === LATE_NIGHT_TIME) {
+    const next = new Date(year, month, day + 1);  // Date math handles month/year rollover
+    return { lookupKey: toDateKey(next), slotDT: new Date(next.getFullYear(), next.getMonth(), next.getDate(), 0, 0), isLateNight: true };
+  }
+  return { lookupKey: toDateKey(new Date(year, month, day)), slotDT: new Date(year, month, day, h, m), isLateNight: false };
+}
+
+function rollForwardDate(d) {
+  const next = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
+  return next;
 }
 
 async function fetchAvailability(year, month) {
@@ -573,12 +600,13 @@ async function renderCalendar(year, month) {
     const isPast  = date < today;
     const isToday = toDateKey(date) === toDateKey(today);
     const isSel   = selectedDate && toDateKey(selectedDate) === key;
-    const taken   = bookedSlots[key] || [];
-    // FIX: a day is fully blocked if no slots pass both the booked check AND the advance-notice check
+    // FIX: a day is fully blocked if no slots pass both the booked check AND the advance-notice check.
+    // The 12 AM ("late night") slot looks up next day's calendar — its canonical date is rolled forward.
     const available = ALL_TIMES.filter(t => {
-      if (taken.includes(t)) return false;
-      const [h, m] = t.split(':').map(Number);
-      return new Date(year, month, day, h, m) >= nowPlusAdvance;
+      const { lookupKey, slotDT } = resolveSlot(year, month, day, t);
+      const lookupTaken = bookedSlots[lookupKey] || [];
+      if (lookupTaken.includes(t)) return false;
+      return slotDT >= nowPlusAdvance;
     });
     const dayFullyBlocked = !isPast && available.length === 0;
 
@@ -620,21 +648,22 @@ function selectDate(date) {
 function renderTimeSlots(date) {
   const section = document.getElementById('time-section');
   const grid    = document.getElementById('time-grid');
-  const key     = toDateKey(date);
-  const taken   = bookedSlots[key] || [];
   const nowPlusAdvance = new Date(Date.now() + MIN_ADVANCE_HOURS * 60 * 60 * 1000);
   section.style.display = 'block';
   grid.innerHTML = '';
   ALL_TIMES.forEach(t => {
-    const [h, m] = t.split(':').map(Number);
-    const slotDT    = new Date(date.getFullYear(), date.getMonth(), date.getDate(), h, m);
-    // FIX: mark slot unavailable if booked OR within the advance-notice window
+    const { lookupKey, slotDT, isLateNight } = resolveSlot(date.getFullYear(), date.getMonth(), date.getDate(), t);
+    const lookupTaken = bookedSlots[lookupKey] || [];
+    // FIX: mark slot unavailable if booked OR within the advance-notice window.
+    // For the 12 AM slot, "booked" is checked against the NEXT day's calendar (end-of-day semantics).
     const isTooSoon = slotDT < nowPlusAdvance;
-    const isUnavail = taken.includes(t) || isTooSoon;
+    const isUnavail = lookupTaken.includes(t) || isTooSoon;
     const btn = document.createElement('button');
-    btn.className = `time-slot${isUnavail ? ' unavailable' : ''}`;
-    btn.textContent = formatTime(t);
-    btn.setAttribute('aria-label', formatTime(t) + (taken.includes(t) ? ' — booked' : isTooSoon ? ' — too soon to book' : ''));
+    btn.className = `time-slot${isUnavail ? ' unavailable' : ''}${isLateNight ? ' late-night' : ''}`;
+    btn.textContent = isLateNight ? `${formatTime(t)} (late night)` : formatTime(t);
+    const ariaSuffix = lookupTaken.includes(t) ? ' — booked' : isTooSoon ? ' — too soon to book' : '';
+    const ariaLateNote = isLateNight ? ' — pickup at midnight, end of selected day' : '';
+    btn.setAttribute('aria-label', formatTime(t) + ariaLateNote + ariaSuffix);
     if (isUnavail) { btn.setAttribute('aria-disabled','true'); btn.setAttribute('tabindex','-1'); }
     else btn.addEventListener('click', () => selectTime(t, btn));
     grid.appendChild(btn);
@@ -652,8 +681,21 @@ function updateSummary() {
   const summary = document.getElementById('selection-summary');
   const svcEl   = document.getElementById('service-type');
   if (selectedDate || selectedTime) summary.classList.add('visible');
-  document.getElementById('sum-date').textContent = selectedDate ? formatDisplayDate(selectedDate) : '—';
-  document.getElementById('sum-time').textContent = selectedTime ? formatTime(selectedTime) : '—';
+  // For the 12 AM late-night slot, the actual pickup is the morning of the FOLLOWING day —
+  // show both dates so the customer isn't surprised on the confirmation screen.
+  let dateText = '—';
+  let timeText = selectedTime ? formatTime(selectedTime) : '—';
+  if (selectedDate) {
+    if (selectedTime === LATE_NIGHT_TIME) {
+      const next = rollForwardDate(selectedDate);
+      dateText = formatDisplayDate(next);
+      timeText = `12:00 AM (late night, end of ${formatDisplayDate(selectedDate)})`;
+    } else {
+      dateText = formatDisplayDate(selectedDate);
+    }
+  }
+  document.getElementById('sum-date').textContent = dateText;
+  document.getElementById('sum-time').textContent = timeText;
   document.getElementById('sum-service').textContent = svcEl.value ? svcEl.options[svcEl.selectedIndex].text : '—';
 }
 
@@ -682,8 +724,15 @@ document.getElementById('continue-btn').addEventListener('click', () => {
   if (!validateEmail(email)) { errorEl.textContent = 'Please enter a valid email address.'; errorEl.style.display = 'block'; document.getElementById('email').focus(); return; }
   if (!validatePhone(phone))  { errorEl.textContent = 'Please enter a valid phone number.'; errorEl.style.display = 'block'; document.getElementById('phone').focus(); return; }
   const svcEl = document.getElementById('service-type');
+  // For the 12 AM late-night slot, roll the actual booking date forward by one day so
+  // Square, Outlook, and the confirmation screen all see a normal next-morning booking.
+  const isLateNight = selectedTime === LATE_NIGHT_TIME;
+  const actualDate  = isLateNight ? rollForwardDate(selectedDate) : selectedDate;
+  const displayDateStr = isLateNight
+    ? `${formatDisplayDate(actualDate)} (late-night pickup, end of ${formatDisplayDate(selectedDate)})`
+    : formatDisplayDate(actualDate);
   const booking = {
-    date: toDateKey(selectedDate), displayDate: formatDisplayDate(selectedDate),
+    date: toDateKey(actualDate), displayDate: displayDateStr,
     time: selectedTime, displayTime: formatTime(selectedTime),
     serviceType: svcEl.value, serviceName: svcEl.options[svcEl.selectedIndex].text,
     firstName: document.getElementById('first-name').value.trim(),
