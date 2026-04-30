@@ -4,6 +4,9 @@ functions = "netlify/functions"
 
 [build.environment]
 NODE_VERSION = "18"
+# Exclude documentation/example files from the secrets scanner — they reference
+# env var NAMES (e.g. AZURE_CLIENT_SECRET) next to placeholder text, never real values.
+SECRETS_SCAN_OMIT_PATHS = ".env.example,README.md,SETUP-INTEGRATIONS.md"
 
 # ─── API Routes → Netlify Functions ────────────────────────────────────────────
 # REQUIRED: Without this, all /api/* calls return 404
