@@ -95,7 +95,7 @@ async function createCalendarEvent(token, bookingData) {
   return res.body?.id || null;
 }
 
-const PRICES = { airport: 9000, corporate: 96000, wedding: 35000, event: 20000, hourly: 12000 };
+const PRICES = { airport: 8000, corporate: 37500, wedding: 35000, event: 20000, hourly: 10000 };
 
 exports.handler = async function(event) {
   const headers = { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Access-Control-Allow-Origin': process.env.SITE_URL || 'https://your-site.netlify.app', 'Access-Control-Allow-Methods': 'POST' };

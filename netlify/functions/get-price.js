@@ -7,11 +7,11 @@
 // ─────────────────────────────────────────────────────────────────
 
 const PRICES = {
-  airport:    9000,  // $90.00
-  corporate: 96000,  // $960.00
+  airport:    8000,  // $80.00
+  corporate: 37500,  // $125.00/hr × 3 hours included = $375.00
   wedding:   35000,  // $350.00
   event:     20000,  // $200.00
-  hourly:    12000,  // $120.00/hr base
+  hourly:    10000,  // $100.00/hr base
 };
 
 exports.handler = async function(event) {
