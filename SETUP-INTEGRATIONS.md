@@ -2,7 +2,7 @@
 
 End-to-end walkthrough for two related tasks:
 
-1. **Custom-domain email** — `rides@<your-domain>.com` (or similar) hosted on the client's existing Microsoft 365 Business tenant, with the domain (registered at Namecheap) pointed at Microsoft.
+1. **Custom-domain email** — `rides@<your-domain>.com` (or similar) hosted on the client's existing Microsoft 365 Business tenant, with the domain (registered at GoDaddy) pointed at Microsoft.
 2. **Calendar integration** — Netlify functions read busy times and write new bookings to that mailbox's Outlook calendar in real time, via Microsoft Graph + an Azure AD app registration.
 
 > **Order matters.** Do Phase 1 first — the mailbox has to exist before the Azure app can be pointed at it.
@@ -11,7 +11,9 @@ End-to-end walkthrough for two related tasks:
 
 ## Phase 1 — Add the custom domain to Microsoft 365
 
-You need: admin login at <https://admin.microsoft.com>, and Namecheap login at <https://www.namecheap.com>.
+You need: admin login at <https://admin.microsoft.com>, and GoDaddy login at <https://account.godaddy.com>.
+
+> **GoDaddy shortcut.** When you add a domain in M365 Admin and Microsoft detects the domain is at GoDaddy, it offers a "Connect to GoDaddy" / "Set up automatically" flow that signs into GoDaddy on your behalf and writes most DNS records for you. If that works, you can skip 1.2 and 1.4 below — just sign in when prompted, approve, and Microsoft does the rest. If it fails or you prefer manual control, follow the steps below.
 
 ### 1.1 Start the domain add in Microsoft 365 Admin
 
@@ -27,41 +29,45 @@ You need: admin login at <https://admin.microsoft.com>, and Namecheap login at <
 
 Leave this page open — you'll come back to it to verify.
 
-### 1.2 Add the verification record at Namecheap
+### 1.2 Add the verification record at GoDaddy
 
-1. Sign in at <https://www.namecheap.com> → **Domain List** → click **Manage** next to the domain.
-2. Top tab: **Advanced DNS**.
-3. Under **Host Records**, click **Add New Record**:
-   - **Type:** `TXT Record`
-   - **Host:** `@`
+1. Sign in at <https://account.godaddy.com> → **My Products** → find the domain → click the **DNS** button (or the three-dot menu → **Manage DNS**).
+2. You'll land on the **DNS Management** page for the domain.
+3. Scroll to the **Records** section → click **Add New Record** (or **Add** at the top right).
+   - **Type:** `TXT`
+   - **Name:** `@`
    - **Value:** `MS=ms########` (the exact value Microsoft showed)
-   - **TTL:** `Automatic`
-4. Click the green checkmark to save.
+   - **TTL:** `1 Hour` (default is fine)
+4. Click **Save**.
 5. Wait 5–15 minutes for DNS to propagate.
+
+> **GoDaddy quirk:** GoDaddy creates a "Parked" CNAME and a default `_domainconnect` record automatically. Leave those alone — they don't conflict with M365.
 
 ### 1.3 Verify the domain in Microsoft 365
 
 1. Back in M365 Admin → continue the wizard → **Verify**.
 2. If it fails, wait another 10 minutes and retry. (You can confirm the TXT propagated using <https://mxtoolbox.com/TXTLookup.aspx>.)
 
-### 1.4 Add the Microsoft DNS records at Namecheap
+### 1.4 Add the Microsoft DNS records at GoDaddy
 
 After verification, Microsoft shows the full set of records to add. Typically:
 
-| Type  | Host   | Value                                            | Priority | Purpose            |
-|-------|--------|--------------------------------------------------|----------|---------------------|
-| MX    | `@`    | `<your-domain>-com.mail.protection.outlook.com.` | `0`      | Inbound email      |
-| TXT   | `@`    | `v=spf1 include:spf.protection.outlook.com -all` | —        | SPF (anti-spoofing) |
-| CNAME | `autodiscover` | `autodiscover.outlook.com.`              | —        | Outlook auto-config |
-| TXT   | `_dmarc` | `v=DMARC1; p=none; rua=mailto:dmarc@<your-domain>.com` | — | DMARC (recommended) |
-| CNAME | `selector1._domainkey` | `selector1-<your-domain>-com._domainkey.<tenant>.onmicrosoft.com.` | — | DKIM (set up later in Defender) |
-| CNAME | `selector2._domainkey` | `selector2-<your-domain>-com._domainkey.<tenant>.onmicrosoft.com.` | — | DKIM (set up later in Defender) |
+| Type  | Name (GoDaddy) | Value                                            | Priority | Purpose            |
+|-------|----------------|--------------------------------------------------|----------|---------------------|
+| MX    | `@`            | `<your-domain>-com.mail.protection.outlook.com`  | `0`      | Inbound email      |
+| TXT   | `@`            | `v=spf1 include:spf.protection.outlook.com -all` | —        | SPF (anti-spoofing) |
+| CNAME | `autodiscover` | `autodiscover.outlook.com`                       | —        | Outlook auto-config |
+| TXT   | `_dmarc`       | `v=DMARC1; p=none; rua=mailto:dmarc@<your-domain>.com` | —  | DMARC (recommended) |
+| CNAME | `selector1._domainkey` | `selector1-<your-domain>-com._domainkey.<tenant>.onmicrosoft.com` | — | DKIM (set up later in Defender) |
+| CNAME | `selector2._domainkey` | `selector2-<your-domain>-com._domainkey.<tenant>.onmicrosoft.com` | — | DKIM (set up later in Defender) |
 
-> **Namecheap quirk:** if Namecheap won't let you add an `MX` because there's already a default one, delete the default first. Also, in the **Mail Settings** section near the top, switch the dropdown to **Custom MX**.
+> **GoDaddy MX quirk:** GoDaddy ships every domain with a placeholder MX record (priority 0, value something like `smtp.secureserver.net`). **Delete it** before adding the Microsoft MX, otherwise inbound mail will be intercepted by GoDaddy's email forwarding rather than reach M365.
+
+> **Email Forwarding feature:** if the domain has GoDaddy "Email Forwarding" enabled (a free add-on some packages turn on by default), turn it off under **My Products → Email & Office** for this domain. It conflicts with the new M365 mailbox.
 
 > **Don't enable Skype/Teams DNS records** unless the client uses them — Microsoft sometimes lists them. Add only Email + AutoDiscover + SPF + DMARC + DKIM.
 
-In Microsoft, click **Verify** / **Continue**. If a record fails, double-check trailing dots and exact values — Namecheap's UI sometimes strips trailing dots; both forms usually work.
+In Microsoft, click **Verify** / **Continue**. If a record fails, double-check exact values — GoDaddy automatically appends the domain to relative names (so `autodiscover` becomes `autodiscover.<your-domain>.com`); use the bare label without trailing dots.
 
 ### 1.5 Create the user mailbox
 
@@ -199,7 +205,7 @@ After Phases 1–4 are done:
 | `401 Unauthorized` in Netlify function logs            | Wrong `AZURE_CLIENT_SECRET`, or secret expired   |
 | `403 Forbidden` from Graph API                         | Admin consent not granted (Phase 2.3 last step) |
 | `Resource could not be found` from Graph               | `OUTLOOK_USER_EMAIL` typo, or mailbox not licensed |
-| Domain verification fails repeatedly at Microsoft      | TXT record at Namecheap has wrong host (`@` vs the literal domain), or hasn't propagated yet — wait 30 min |
+| Domain verification fails repeatedly at Microsoft      | TXT record at GoDaddy has wrong Name (`@` vs the literal domain), or hasn't propagated yet — wait 30 min |
 | Email arrives but can't send out                       | SPF record missing or wrong — recheck Phase 1.4 |
 | Calendar reads work but new bookings don't appear      | App is missing `Calendars.ReadWrite` (only has `.Read`) |
 
