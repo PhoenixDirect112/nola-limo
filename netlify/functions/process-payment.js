@@ -123,7 +123,7 @@ exports.handler = async function(event) {
     phone: sanitize(bookingData.phone, 30), pickup: sanitize(bookingData.pickup, 300),
     dropoff: sanitize(bookingData.dropoff, 300), passengers: parseInt(bookingData.passengers, 10) || 1,
     notes: sanitize(bookingData.notes || '', 500),
-    confirmationId: `NPL-${Date.now()}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`,
+    confirmationId: `WMS-${Date.now()}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`,
     // FIX: generate human-readable date/time for Square note & calendar event
     displayDate: formatDisplayDate(bookingData.date),
     displayTime: formatDisplayTime(bookingData.time),
@@ -131,7 +131,10 @@ exports.handler = async function(event) {
   usedNonces.add(nonce);
   setTimeout(() => usedNonces.delete(nonce), 60 * 60 * 1000);
   const amountCents = PRICES[clean.serviceType] || 15000;
-  const idempotencyKey = crypto.randomUUID();
+  // FIX: use the booking nonce as the Square idempotency key. If the customer
+  // double-clicks Submit and two requests fire across separate function instances,
+  // Square dedupes them within its 24-hour window — preventing double charges.
+  const idempotencyKey = nonce;
   try {
     const payment = await chargeSquare(sourceId, amountCents, clean, idempotencyKey);
     try { const msToken = await getMsToken(); await createCalendarEvent(msToken, clean); } catch (calErr) { console.error('Calendar event error (non-fatal):', calErr.message); }
