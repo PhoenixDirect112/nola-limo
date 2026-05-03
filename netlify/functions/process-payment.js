@@ -21,12 +21,21 @@ function httpsPost(hostname, path, headers, body) {
     const req = https.request(options, (res) => {
       let data = '';
       res.on('data', chunk => data += chunk);
-      res.on('end', () => { try { resolve({ status: res.statusCode, body: JSON.parse(data) }); } catch { reject(new Error('Invalid JSON response')); } });
+      res.on('end', () => {
+        // sendMail and other Graph endpoints return 2xx with empty body — don't choke on that
+        if (!data) return resolve({ status: res.statusCode, body: null });
+        try { resolve({ status: res.statusCode, body: JSON.parse(data) }); } catch { reject(new Error('Invalid JSON response')); }
+      });
     });
     req.on('error', reject);
     req.write(bodyStr);
     req.end();
   });
+}
+
+function escapeHtml(str) {
+  if (typeof str !== 'string') return '';
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 // FIX: Format ISO date "YYYY-MM-DD" as human-readable string for Square notes
@@ -72,6 +81,105 @@ async function getMsToken() {
     req.write(body);
     req.end();
   });
+}
+
+function buildCustomerEmailHtml(b, amountPaid) {
+  const e = escapeHtml;
+  const passengersLabel = `${b.passengers} passenger${b.passengers > 1 ? 's' : ''}`;
+  return `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f5f5f5;font-family:Helvetica,Arial,sans-serif;color:#222;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5;padding:30px 0;"><tr><td align="center">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-top:4px solid #c9a84c;max-width:600px;">
+<tr><td style="padding:40px 40px 20px;text-align:center;">
+<div style="font-family:Georgia,serif;font-size:22px;font-weight:300;letter-spacing:2px;color:#1a1a1a;">WMS <span style="color:#c9a84c;">DELIVERY SERVICES LLC</span></div>
+<div style="margin-top:24px;font-size:18px;color:#1a1a1a;font-weight:600;">Your Ride is Confirmed</div>
+<div style="margin-top:8px;font-size:13px;color:#999;">Confirmation #${e(b.confirmationId)}</div>
+</td></tr>
+<tr><td style="padding:0 40px 20px;font-size:14px;line-height:1.6;color:#444;">Hi ${e(b.firstName)},<br><br>Thanks for booking with WMS Delivery Services. Your ride details are below — please review and reach out if anything needs to change.</td></tr>
+<tr><td style="padding:0 40px 30px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #eee;border-collapse:collapse;">
+<tr><td style="padding:12px 16px;background:#fafafa;font-size:11px;color:#999;text-transform:uppercase;letter-spacing:1px;width:35%;">Service</td><td style="padding:12px 16px;font-size:14px;color:#222;">${e(b.serviceName)}</td></tr>
+<tr><td style="padding:12px 16px;background:#fafafa;font-size:11px;color:#999;text-transform:uppercase;letter-spacing:1px;border-top:1px solid #eee;">Date</td><td style="padding:12px 16px;font-size:14px;color:#222;border-top:1px solid #eee;">${e(b.displayDate)}</td></tr>
+<tr><td style="padding:12px 16px;background:#fafafa;font-size:11px;color:#999;text-transform:uppercase;letter-spacing:1px;border-top:1px solid #eee;">Time</td><td style="padding:12px 16px;font-size:14px;color:#222;border-top:1px solid #eee;">${e(b.displayTime)}</td></tr>
+<tr><td style="padding:12px 16px;background:#fafafa;font-size:11px;color:#999;text-transform:uppercase;letter-spacing:1px;border-top:1px solid #eee;">Pickup</td><td style="padding:12px 16px;font-size:14px;color:#222;border-top:1px solid #eee;">${e(b.pickup)}</td></tr>
+<tr><td style="padding:12px 16px;background:#fafafa;font-size:11px;color:#999;text-transform:uppercase;letter-spacing:1px;border-top:1px solid #eee;">Drop-off</td><td style="padding:12px 16px;font-size:14px;color:#222;border-top:1px solid #eee;">${e(b.dropoff)}</td></tr>
+<tr><td style="padding:12px 16px;background:#fafafa;font-size:11px;color:#999;text-transform:uppercase;letter-spacing:1px;border-top:1px solid #eee;">Passengers</td><td style="padding:12px 16px;font-size:14px;color:#222;border-top:1px solid #eee;">${e(passengersLabel)}</td></tr>
+<tr><td style="padding:12px 16px;background:#fafafa;font-size:11px;color:#999;text-transform:uppercase;letter-spacing:1px;border-top:1px solid #eee;">Total Paid</td><td style="padding:12px 16px;font-size:14px;color:#222;border-top:1px solid #eee;font-weight:600;">$${e(amountPaid)}</td></tr>
+</table>
+</td></tr>
+<tr><td style="padding:0 40px 30px;">
+<div style="font-size:11px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">What to expect</div>
+<ul style="margin:0;padding-left:20px;font-size:14px;line-height:1.7;color:#444;">
+<li>Your driver will arrive 10 minutes before your pickup time.</li>
+<li>For airport pickups, we track your flight in real time and adjust automatically for delays.</li>
+<li>You'll receive a reminder 24 hours before your ride.</li>
+</ul>
+</td></tr>
+<tr><td style="padding:24px 40px;background:#1a1a1a;color:#f5f0e8;font-size:13px;line-height:1.7;text-align:center;">
+<div>Need to change something?</div>
+<div style="margin-top:6px;">Text or call <a href="tel:+15047104563" style="color:#c9a84c;text-decoration:none;font-weight:600;">(504) 710-4563</a> · 10 AM – 10 PM</div>
+<div style="margin-top:6px;">Or reply directly to this email.</div>
+</td></tr>
+<tr><td style="padding:16px 40px;text-align:center;font-size:11px;color:#999;">WMS Delivery Services LLC · New Orleans, LA<br><a href="https://wmsdeliveryservicellc.com" style="color:#999;text-decoration:underline;">wmsdeliveryservicellc.com</a></td></tr>
+</table>
+</td></tr></table>
+</body></html>`;
+}
+
+function buildCustomerEmailText(b, amountPaid) {
+  const passengersLabel = `${b.passengers} passenger${b.passengers > 1 ? 's' : ''}`;
+  return `WMS Delivery Services LLC
+
+Your ride is confirmed.
+
+Hi ${b.firstName},
+
+Thanks for booking with WMS Delivery Services. Your ride details are below — please review and reach out if anything needs to change.
+
+Confirmation: ${b.confirmationId}
+
+Service:    ${b.serviceName}
+Date:       ${b.displayDate}
+Time:       ${b.displayTime}
+Pickup:     ${b.pickup}
+Drop-off:   ${b.dropoff}
+Passengers: ${passengersLabel}
+Total Paid: $${amountPaid}
+
+What to expect:
+  • Your driver will arrive 10 minutes before your pickup time.
+  • For airport pickups, we track your flight in real time.
+  • You'll receive a reminder 24 hours before your ride.
+
+Need to change something?
+Text or call (504) 710-4563 · 10 AM – 10 PM
+Or reply directly to this email.
+
+WMS Delivery Services LLC · New Orleans, LA
+https://wmsdeliveryservicellc.com`;
+}
+
+async function sendCustomerEmail(token, bookingData, amountPaid) {
+  const { OUTLOOK_USER_EMAIL } = process.env;
+  const res = await httpsPost('graph.microsoft.com', `/v1.0/users/${encodeURIComponent(OUTLOOK_USER_EMAIL)}/sendMail`,
+    { Authorization: `Bearer ${token}` },
+    {
+      message: {
+        subject: `Your WMS Delivery ride is confirmed — ${bookingData.displayDate}`,
+        body: { contentType: 'HTML', content: buildCustomerEmailHtml(bookingData, amountPaid) },
+        toRecipients: [{ emailAddress: { address: bookingData.email } }],
+        replyTo:     [{ emailAddress: { address: OUTLOOK_USER_EMAIL } }],
+      },
+      saveToSentItems: true,
+    }
+  );
+  // sendMail returns 202 Accepted on success with no body
+  if (res.status !== 202 && res.status !== 200) {
+    console.error('Customer email send failed:', res.status, res.body);
+    return false;
+  }
+  return true;
 }
 
 async function createCalendarEvent(token, bookingData) {
@@ -137,8 +245,19 @@ exports.handler = async function(event) {
   const idempotencyKey = nonce;
   try {
     const payment = await chargeSquare(sourceId, amountCents, clean, idempotencyKey);
-    try { const msToken = await getMsToken(); await createCalendarEvent(msToken, clean); } catch (calErr) { console.error('Calendar event error (non-fatal):', calErr.message); }
-    return { statusCode: 200, headers, body: JSON.stringify({ success: true, confirmationId: clean.confirmationId, amountPaid: (amountCents / 100).toFixed(2), paymentId: payment.id }) };
+    const amountPaid = (amountCents / 100).toFixed(2);
+    // Microsoft Graph work — both calendar event and customer email use the same token.
+    // Run in parallel; failure of one doesn't block the other or the payment response.
+    try {
+      const msToken = await getMsToken();
+      await Promise.allSettled([
+        createCalendarEvent(msToken, clean),
+        sendCustomerEmail(msToken, clean, amountPaid),
+      ]);
+    } catch (msErr) {
+      console.error('Microsoft Graph error (non-fatal):', msErr.message);
+    }
+    return { statusCode: 200, headers, body: JSON.stringify({ success: true, confirmationId: clean.confirmationId, amountPaid, paymentId: payment.id }) };
   } catch (err) {
     console.error('Payment error:', err.message);
     return { statusCode: 402, headers, body: JSON.stringify({ success: false, error: err.message || 'Payment could not be processed.' }) };
