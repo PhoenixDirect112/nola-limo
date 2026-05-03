@@ -7,10 +7,13 @@ NODE_VERSION = "18"
 # Exclude documentation/example files from the secrets scanner — they reference
 # env var NAMES (e.g. AZURE_CLIENT_SECRET) next to placeholder text, never real values.
 SECRETS_SCAN_OMIT_PATHS = ".env.example,README.md,SETUP-INTEGRATIONS.md"
-# SITE_URL is the public website URL (https://wmsdeliveryservicellc.com), not a secret.
-# We hardcode it in customer-facing email templates and source comments, so the scanner
-# would otherwise false-positive every commit.
-SECRETS_SCAN_OMIT_KEYS = "SITE_URL"
+# These env vars hold values that aren't actually secrets — they're publicly visible
+# in the site or have generic word values that false-positive the scanner:
+#   SITE_URL           — public website URL, in DNS, browser bars, email footers
+#   SQUARE_ENVIRONMENT — value is the literal word "production" or "sandbox" — appears
+#                        in many comments and the .gitignore
+#   OUTLOOK_USER_EMAIL — rides@... is the public contact email, shown in the site footer
+SECRETS_SCAN_OMIT_KEYS = "SITE_URL,SQUARE_ENVIRONMENT,OUTLOOK_USER_EMAIL"
 
 # ─── API Routes → Netlify Functions ────────────────────────────────────────────
 # REQUIRED: Without this, all /api/* calls return 404
