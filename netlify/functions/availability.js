@@ -120,6 +120,16 @@ function eventsToBookedSlots(events) {
       }
       dayCursor.setDate(dayCursor.getDate() + 1);
     }
+    // The booking page's "12 AM" slot for day N is a late-night pickup that
+    // resolves to bookedSlots[N+1]["00:00"]. Outlook all-day blocks have end
+    // at exact midnight (e.g. blocking 22-26 yields end=27 00:00), and the
+    // loop above stops before the end day. Without this, the last covered
+    // day's "12 AM" never matches and shows as available.
+    if (end > start && end.getHours() === 0 && end.getMinutes() === 0 && end.getSeconds() === 0 && end.getMilliseconds() === 0) {
+      const dateKey = [end.getFullYear(), String(end.getMonth()+1).padStart(2,'0'), String(end.getDate()).padStart(2,'0')].join('-');
+      if (!slots[dateKey]) slots[dateKey] = [];
+      if (!slots[dateKey].includes('00:00')) slots[dateKey].push('00:00');
+    }
   }
   return slots;
 }
