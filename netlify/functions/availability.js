@@ -100,18 +100,25 @@ function eventsToBookedSlots(events) {
   for (const event of events) {
     const start = parseCentralDateTime(event.start.dateTime);
     const end   = parseCentralDateTime(event.end.dateTime);
-    for (const time of ALL_TIMES) {
-      const [h, m] = time.split(':').map(Number);
-      const slotStart = new Date(start);
-      slotStart.setHours(h, m, 0, 0);
-      const slotEnd = new Date(slotStart);
-      slotEnd.setHours(h + 1, m, 0, 0);
-      if (slotStart < end && slotEnd > start) {
-        // FIX: use slotStart for ALL parts of the key (old code mixed start.month with slotStart.date)
-        const dateKey = [slotStart.getFullYear(), String(slotStart.getMonth()+1).padStart(2,'0'), String(slotStart.getDate()).padStart(2,'0')].join('-');
-        if (!slots[dateKey]) slots[dateKey] = [];
-        if (!slots[dateKey].includes(time)) slots[dateKey].push(time);
+    // Walk every calendar day the event touches. Old code only used the event's
+    // start date, so multi-day Outlook blocks (e.g. all-day Mar 22-25) only
+    // marked day 1 — leaving subsequent days fully "available" on the site.
+    const dayCursor = new Date(start);
+    dayCursor.setHours(0, 0, 0, 0);
+    while (dayCursor < end) {
+      for (const time of ALL_TIMES) {
+        const [h, m] = time.split(':').map(Number);
+        const slotStart = new Date(dayCursor);
+        slotStart.setHours(h, m, 0, 0);
+        const slotEnd = new Date(slotStart);
+        slotEnd.setHours(h + 1, m, 0, 0);
+        if (slotStart < end && slotEnd > start) {
+          const dateKey = [slotStart.getFullYear(), String(slotStart.getMonth()+1).padStart(2,'0'), String(slotStart.getDate()).padStart(2,'0')].join('-');
+          if (!slots[dateKey]) slots[dateKey] = [];
+          if (!slots[dateKey].includes(time)) slots[dateKey].push(time);
+        }
       }
+      dayCursor.setDate(dayCursor.getDate() + 1);
     }
   }
   return slots;
